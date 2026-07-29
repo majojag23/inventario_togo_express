@@ -48,7 +48,7 @@
                 <button class="nav-link active fw-bold" id="tab-ventas" data-bs-toggle="pill" data-bs-target="#content-ventas">🛒 Ventas</button>
             </li>
             <li class="nav-item">
-                <button class="nav-link fw-bold" id="tab-tabla" data-bs-toggle="pill" data-bs-target="#content-tabla">📋 Inventario (37 ítems)</button>
+                <button class="nav-link fw-bold" id="tab-tabla" data-bs-toggle="pill" data-bs-target="#content-tabla">📋 Inventario</button>
             </li>
             <li class="nav-item">
                 <button class="nav-link fw-bold" id="tab-metricas" data-bs-toggle="pill" data-bs-target="#content-metricas">📊 Métricas</button>
@@ -200,7 +200,8 @@
                         <td class="text-success fw-bold">$${p.precio.toFixed(2)}</td>
                         <td class="text-muted">$${p.costo.toFixed(2)}</td>
                         <td>
-                            <button class="btn btn-sm btn-outline-primary fw-bold" onclick="editarProducto(${p.id})">✏️ Editar</button>
+                            <button class="btn btn-sm btn-outline-primary fw-bold me-1" onclick="editarProducto(${p.id})">✏️ Editar</button>
+                            <button class="btn btn-sm btn-outline-danger fw-bold" onclick="eliminarProducto(${p.id}, '${p.nombre}')">🗑️ Eliminar</button>
                         </td>
                     </tr>
                 `;
@@ -241,6 +242,13 @@
         async function vender(id) {
             const res = await fetch(`/api/vender/${id}`, { method: 'POST' });
             if (res.ok) cargarProductos();
+        }
+
+        async function eliminarProducto(id, nombre) {
+            if (confirm(`¿Estás segura de eliminar "${nombre}" del inventario?`)) {
+                const res = await fetch(`/api/producto/eliminar/${id}`, { method: 'DELETE' });
+                if (res.ok) cargarProductos();
+            }
         }
 
         function abrirModalProducto() {
