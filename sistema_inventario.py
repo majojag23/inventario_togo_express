@@ -2,45 +2,47 @@ import os
 import sqlite3
 from flask import Flask, render_template, request, jsonify, send_from_directory
 from werkzeug.utils import secure_filename
+import psycopg2
+from psycopg2.extras import RealDictCursor
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'uploads'
-app.config['DATABASE'] = 'inventario.db'
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
-def get_db():
-    conn = sqlite3.connect(app.config['DATABASE'])
-    conn.row_factory = sqlite3.Row
-    return conn
+# URL de la base de datos de Render o SQLite local
+DB_URL = os.environ.get('DATABASE_URL')
 
-# CATÁLOGO COMPLETO AUDITADO (37 ARTÍCULOS DE LA FACTURA E INVENTARIO)
+def get_db():
+    if DB_URL:
+        # Corrige prefijo si Render entrega postgres:// en lugar de postgresql://
+        url = DB_URL.replace("postgres://", "postgresql://", 1)
+        conn = psycopg2.connect(url, cursor_factory=RealDictCursor)
+        return conn
+    else:
+        conn = sqlite3.connect('inventario.db')
+        conn.row_factory = sqlite3.Row
+        return conn
+
 PRODUCTOS_FACTURA = [
-    # CERVEZAS Y BEBIDAS
     ("Cerveza Corona Extra (330 mL)", 2.25, 1.65, 24, "Cerveza Corona Extra (330 mL).jpg"),
     ("Cerveza Corona Extra six", 12.50, 9.90, 4, "Cerveza Corona Extra six.jpg"),
     ("Cerveza Pilsener (355 mL) u", 1.75, 1.36, 36, "Cerveza Pilsener (355 mL) u.jpg"),
     ("Cerveza Pilsener (355 mL)", 9.75, 8.15, 6, "Cerveza Pilsener (355 mL).jpg"),
     ("Cerveza Suprema (330 mL)", 1.85, 1.42, 18, "Cerveza Suprema (330 mL).jpg"),
     ("Cerveza Suprema six", 10.25, 8.50, 3, "SUPREMA SIX.jpg"),
-
-    # GASEOSAS Y REFRESCOS
     ("Coca-Cola 2.5 L", 2.95, 2.13, 6, "Coca-Cola 2.5 L.jpg"),
     ("Coca-Cola Litro", 1.75, 1.30, 6, "Coca-Cola Litro.jpg"),
     ("Coca-Cola Personal", 1.65, 1.25, 2, "Coca-Cola Personal.jpg"),
     ("Coca-Cola zero 1.25", 1.85, 1.30, 2, "Coca-Cola zero 1.25.jpg"),
     ("del valle 2.5", 1.75, 1.30, 4, "del valle 2.5.jpg"),
     ("Rehidratante Elec", 3.10, 2.35, 1, "Rehidratante Elec.jpg"),
-
-    # LICORES Y VINOS
     ("Smirnoff Vodka", 18.99, 12.95, 1, "smirnoff vodka.jpg"),
     ("Ron Bacardí Blanco", 21.50, 14.60, 1, "Ron Bacardí Blanco.jpg"),
     ("Ron Bacardí Carta Blanco Oro", 14.50, 9.40, 2, "Ron Bacardí Carta Blanco Oro.jpg"),
     ("Ron Bacardí Oro 750 ml", 18.50, 12.35, 1, "Ron Bacardí Oro 750 ml.jpg"),
     ("Vino Reservado Concha y Toro", 8.99, 5.95, 1, "Vino Reservado Concha y Toro.jpg"),
-
-    # SNACKS Y BOQUITAS
     ("Doritos Extra Queso", 2.15, 1.63, 2, "Doritos Extra Queso.jpg"),
     ("Doritos NACHO", 2.15, 1.63, 2, "Doritos NACHO.jpg"),
     ("Papas Lays con Sal", 2.60, 1.96, 3, "Papas Lays con Sal.jpg"),
@@ -50,14 +52,10 @@ PRODUCTOS_FACTURA = [
     ("NOCHOS 150", 1.65, 1.20, 2, "NOCHOS 150.jpg"),
     ("JALAPEÑO 150", 1.65, 1.20, 2, "JALAPEÑO 150.jpg"),
     ("Semillas Surtidas", 3.85, 2.95, 2, "semillas.jpg"),
-
-    # LÁCTEOS Y HELADOS
     ("LECHE ENTERA", 1.95, 1.50, 2, "LECHE ENTERA.jpg"),
     ("LECHE DESLAC", 1.65, 1.25, 3, "LECHE DESLAC.jpg"),
     ("PALETA D/YOGURT", 1.25, 0.74, 6, "PALETA D/YOGURT.jpg"),
     ("PALETA TASTY", 1.00, 0.60, 6, "PALETA TASTY.jpg"),
-
-    # CIGARROS Y OTROS
     ("MALBORO GOLD", 3.75, 2.05, 10, "MALBORO GOLD.jpg"),
     ("MALBORO FOREST", 4.99, 4.10, 10, "MALBORO FOREST.jpg"),
     ("MALBORO VISTA", 4.50, 3.50, 10, "MALBORO VISTA.jpg"),
@@ -68,31 +66,54 @@ PRODUCTOS_FACTURA = [
 ]
 
 def init_db():
-    with get_db() as conn:
-        conn.execute('''
-            CREATE TABLE IF NOT EXISTS productos (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                nombre TEXT NOT NULL,
-                precio REAL NOT NULL,
-                costo REAL NOT NULL,
-                stock INTEGER NOT NULL,
-                ventas INTEGER DEFAULT 0,
-                imagen TEXT
-            )
-        ''')
-        cursor = conn.cursor()
-        # Si la base de datos no tiene todos los productos, los refresca
-        cursor.execute("SELECT COUNT(*) FROM productos")
-        count = cursor.fetchone()[0]
-        if count < len(PRODUCTOS_FACTURA):
-            conn.execute("DELETE FROM productos")
-            cursor.executemany('''
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    create_query = '''
+        CREATE TABLE IF NOT EXISTS productos (
+            id SERIAL PRIMARY KEY,
+            nombre VARCHAR(255) NOT NULL,
+            precio NUMERIC(10,2) NOT NULL,
+            costo NUMERIC(10,2) NOT NULL,
+            stock INTEGER NOT NULL,
+            ventas INTEGER DEFAULT 0,
+            imagen VARCHAR(255)
+        )
+    ''' if DB_URL else '''
+        CREATE TABLE IF NOT EXISTS productos (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nombre TEXT NOT NULL,
+            precio REAL NOT NULL,
+            costo REAL NOT NULL,
+            stock INTEGER NOT NULL,
+            ventas INTEGER DEFAULT 0,
+            imagen TEXT
+        )
+    '''
+    
+    cursor.execute(create_query)
+    
+    cursor.execute("SELECT COUNT(*) FROM productos")
+    res = cursor.fetchone()
+    count = res['count'] if isinstance(res, dict) else res[0]
+    
+    if count == 0:
+        for p in PRODUCTOS_FACTURA:
+            cursor.execute('''
+                INSERT INTO productos (nombre, precio, costo, stock, ventas, imagen)
+                VALUES (%s, %s, %s, %s, 0, %s)
+            ''' if DB_URL else '''
                 INSERT INTO productos (nombre, precio, costo, stock, ventas, imagen)
                 VALUES (?, ?, ?, ?, 0, ?)
-            ''', PRODUCTOS_FACTURA)
-            conn.commit()
+            ''', p)
+    
+    conn.commit()
+    conn.close()
 
-init_db()
+try:
+    init_db()
+except Exception as e:
+    print("Error inicDB:", e)
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -104,17 +125,30 @@ def index():
 @app.route('/api/productos', methods=['GET'])
 def get_productos():
     conn = get_db()
-    prods = conn.execute('SELECT * FROM productos ORDER BY nombre ASC').fetchall()
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM productos ORDER BY nombre ASC')
+    prods = cursor.fetchall()
+    conn.close()
     return jsonify([dict(p) for p in prods])
 
 @app.route('/api/vender/<int:id>', methods=['POST'])
 def vender_producto(id):
     conn = get_db()
-    prod = conn.execute('SELECT * FROM productos WHERE id = ?', (id,)).fetchone()
+    cursor = conn.cursor()
+    
+    cursor.execute('SELECT * FROM productos WHERE id = %s' if DB_URL else 'SELECT * FROM productos WHERE id = ?', (id,))
+    prod = cursor.fetchone()
+    
     if prod and prod['stock'] > 0:
-        conn.execute('UPDATE productos SET stock = stock - 1, ventas = ventas + 1 WHERE id = ?', (id,))
+        cursor.execute(
+            'UPDATE productos SET stock = stock - 1, ventas = ventas + 1 WHERE id = %s' if DB_URL else 'UPDATE productos SET stock = stock - 1, ventas = ventas + 1 WHERE id = ?',
+            (id,)
+        )
         conn.commit()
+        conn.close()
         return jsonify({"success": True})
+    
+    conn.close()
     return jsonify({"success": False, "message": "Agotado"}), 400
 
 @app.route('/api/producto/guardar', methods=['POST'])
@@ -133,31 +167,29 @@ def guardar_producto():
         imagen_file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
 
     conn = get_db()
+    cursor = conn.cursor()
+
     if id_prod:
         if filename:
-            conn.execute('''
-                UPDATE productos SET nombre=?, precio=?, costo=?, stock=?, imagen=? WHERE id=?
-            ''', (nombre, precio, costo, stock, filename, id_prod))
+            q = 'UPDATE productos SET nombre=%s, precio=%s, costo=%s, stock=%s, imagen=%s WHERE id=%s' if DB_URL else 'UPDATE productos SET nombre=?, precio=?, costo=?, stock=?, imagen=? WHERE id=?'
+            cursor.execute(q, (nombre, precio, costo, stock, filename, id_prod))
         else:
-            conn.execute('''
-                UPDATE productos SET nombre=?, precio=?, costo=?, stock=? WHERE id=?
-            ''', (nombre, precio, costo, stock, id_prod))
+            q = 'UPDATE productos SET nombre=%s, precio=%s, costo=%s, stock=%s WHERE id=%s' if DB_URL else 'UPDATE productos SET nombre=?, precio=?, costo=?, stock=? WHERE id=?'
+            cursor.execute(q, (nombre, precio, costo, stock, id_prod))
     else:
-        conn.execute('''
-            INSERT INTO productos (nombre, precio, costo, stock, imagen) VALUES (?, ?, ?, ?, ?)
-        ''', (nombre, precio, costo, stock, filename or 'default.jpg'))
+        q = 'INSERT INTO productos (nombre, precio, costo, stock, imagen) VALUES (%s, %s, %s, %s, %s)' if DB_URL else 'INSERT INTO productos (nombre, precio, costo, stock, imagen) VALUES (?, ?, ?, ?, ?)'
+        cursor.execute(q, (nombre, precio, costo, stock, filename or 'default.jpg'))
 
     conn.commit()
+    conn.close()
     return jsonify({"success": True})
 
 @app.route('/uploads/<path:filename>')
 def uploaded_file(filename):
-    # Busca la imagen en la carpeta uploads o en el directorio raíz donde están guardadas
     if os.path.exists(os.path.join(app.config['UPLOAD_FOLDER'], filename)):
         return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
     if os.path.exists(filename):
         return send_from_directory('.', filename)
-    # Busca ignorando extensión
     base = os.path.splitext(filename)[0]
     for ext in ['.jpg', '.png', '.jpeg', '.JPG', '.PNG', '.webp']:
         if os.path.exists(base + ext):
