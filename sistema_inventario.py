@@ -11,12 +11,10 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
-# URL de la base de datos de Render o SQLite local
 DB_URL = os.environ.get('DATABASE_URL')
 
 def get_db():
     if DB_URL:
-        # Corrige prefijo si Render entrega postgres:// en lugar de postgresql://
         url = DB_URL.replace("postgres://", "postgresql://", 1)
         conn = psycopg2.connect(url, cursor_factory=RealDictCursor)
         return conn
@@ -66,54 +64,64 @@ PRODUCTOS_FACTURA = [
 ]
 
 def init_db():
-    conn = get_db()
-    cursor = conn.cursor()
-    
-    create_query = '''
-        CREATE TABLE IF NOT EXISTS productos (
-            id SERIAL PRIMARY KEY,
-            nombre VARCHAR(255) NOT NULL,
-            precio NUMERIC(10,2) NOT NULL,
-            costo NUMERIC(10,2) NOT NULL,
-            stock INTEGER NOT NULL,
-            ventas INTEGER DEFAULT 0,
-            imagen VARCHAR(255)
-        )
-    ''' if DB_URL else '''
-        CREATE TABLE IF NOT EXISTS productos (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            nombre TEXT NOT NULL,
-            precio REAL NOT NULL,
-            costo REAL NOT NULL,
-            stock INTEGER NOT NULL,
-            ventas INTEGER DEFAULT 0,
-            imagen TEXT
-        )
-    '''
-    
-    cursor.execute(create_query)
-    
-    cursor.execute("SELECT COUNT(*) FROM productos")
-    res = cursor.fetchone()
-    count = res['count'] if isinstance(res, dict) else res[0]
-    
-    if count == 0:
-        for p in PRODUCTOS_FACTURA:
-            cursor.execute('''
-                INSERT INTO productos (nombre, precio, costo, stock, ventas, imagen)
-                VALUES (%s, %s, %s, %s, 0, %s)
-            ''' if DB_URL else '''
-                INSERT INTO productos (nombre, precio, costo, stock, ventas, imagen)
-                VALUES (?, ?, ?, ?, 0, ?)
-            ''', p)
-    
-    conn.commit()
-    conn.close()
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        
+        create_query = '''
+            CREATE TABLE IF NOT EXISTS productos (
+                id SERIAL PRIMARY KEY,
+                nombre VARCHAR(255) NOT NULL,
+                precio NUMERIC(10,2) NOT NULL,
+                costo NUMERIC(10,2) NOT NULL,
+                stock INTEGER NOT NULL,
+                ventas INTEGER DEFAULT 0,
+                imagen VARCHAR(255)
+            )
+        ''' if DB_URL else '''
+            CREATE TABLE IF NOT EXISTS productos (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                nombre TEXT NOT NULL,
+                precio REAL NOT NULL,
+                costo REAL NOT NULL,
+                stock INTEGER NOT NULL,
+                ventas INTEGER DEFAULT 0,
+                imagen TEXT
+            )
+        '''
+        
+        cursor.execute(create_query)
+        conn.commit()
 
-try:
-    init_db()
-except Exception as e:
-    print("Error inicDB:", e)
+        cursor.execute("SELECT COUNT(*) FROM productos")
+        res = cursor.fetchone()
+        
+        count = 0
+        if isinstance(res, dict):
+            count = list(res.values())[0]
+        elif isinstance(res, (tuple, list)):
+            count = res[0]
+
+        if count < len(PRODUCTOS_FACTURA):
+            for p in PRODUCTOS_FACTURA:
+                q = '''
+                    INSERT INTO productos (nombre, precio, costo, stock, ventas, imagen)
+                    VALUES (%s, %s, %s, %s, 0, %s)
+                ''' if DB_URL else '''
+                    INSERT INTO productos (nombre, precio, costo, stock, ventas, imagen)
+                    VALUES (?, ?, ?, ?, 0, ?)
+                '''
+                try:
+                    cursor.execute(q, p)
+                except Exception as ex:
+                    print("Error registrando prod:", ex)
+            conn.commit()
+
+        conn.close()
+    except Exception as e:
+        print("Error en init_db:", e)
+
+init_db()
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
