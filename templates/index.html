@@ -182,8 +182,11 @@
                                 <h6 class="card-title text-truncate fw-bold mb-1" style="font-size:0.85rem; color: var(--brand-navy);">${p.nombre}</h6>
                                 <span class="price-text fs-5">$${p.precio.toFixed(2)}</span>
                                 <span class="badge ${bgStock} badge-stock my-1">Stock: ${p.stock} u</span>
-                                <button class="btn btn-brand-red btn-sm w-100 fw-bold mt-1" onclick="vender(${p.id})" ${p.stock === 0 ? 'disabled' : ''}>
+                                <button class="btn btn-brand-red btn-sm w-100 fw-bold mt-1 mb-1" onclick="vender(${p.id})" ${p.stock === 0 ? 'disabled' : ''}>
                                     🛒 VENDER
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm w-100 fw-bold" style="font-size: 0.7rem;" onclick="devolver(${p.id})">
+                                    ↩️ Devolver / Cancelar
                                 </button>
                             </div>
                         </div>
@@ -244,6 +247,11 @@
 
         async function vender(id) {
             const res = await fetch(`/api/vender/${id}`, { method: 'POST' });
+            if (res.ok) cargarProductos();
+        }
+
+        async function devolver(id) {
+            const res = await fetch(`/api/devolver/${id}`, { method: 'POST' });
             if (res.ok) cargarProductos();
         }
 
