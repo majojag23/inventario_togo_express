@@ -157,11 +157,9 @@ def vender_producto(id):
     if prod and prod['stock'] > 0:
         nombre_prod = prod['nombre'].lower()
         
-        # 1. Restar 1 al producto seleccionado
         q_upd = 'UPDATE productos SET stock = stock - 1, ventas = ventas + 1 WHERE id = %s' if DB_URL else 'UPDATE productos SET stock = stock - 1, ventas = ventas + 1 WHERE id = ?'
         cursor.execute(q_upd, (id,))
         
-        # 2. LÓGICA DE CERVEZAS (Six Pack <-> Unidades)
         cursor.execute('SELECT * FROM productos')
         todos = [dict(p) for p in cursor.fetchall()]
         
@@ -194,11 +192,60 @@ def vender_producto(id):
     conn.close()
     return jsonify({"success": False, "message": "Agotado"}), 400
 
+@app.route('/api/devolver/<int:id>', methods=['POST'])
+def devolver_producto(id):
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    q_sel = 'SELECT * FROM productos WHERE id = %s' if DB_URL else 'SELECT * FROM productos WHERE id = ?'
+    cursor.execute(q_sel, (id,))
+    prod = cursor.fetchone()
+    
+    if prod:
+        nombre_prod = prod['nombre'].lower()
+        nuevas_ventas = max(0, int(prod['ventas']) - 1)
+        
+        # 1. Devolver 1 al stock y restar 1 a las ventas
+        q_upd = 'UPDATE productos SET stock = stock + 1, ventas = %s WHERE id = %s' if DB_URL else 'UPDATE productos SET stock = stock + 1, ventas = ? WHERE id = ?'
+        cursor.execute(q_upd, (nuevas_ventas, id))
+        
+        cursor.execute('SELECT * FROM productos')
+        todos = [dict(p) for p in cursor.fetchall()]
+        
+        # 2. Devolución de Cervezas (Restaurar 6 si devolvieron un Six Pack)
+        if 'six' in nombre_prod:
+            marca = nombre_prod.replace('six', '').replace('(355 ml)', '').replace('(330 ml)', '').strip()
+            for item in todos:
+                item_nombre = item['nombre'].lower()
+                if marca in item_nombre and 'six' not in item_nombre:
+                    nuevo_stock_u = int(item['stock']) + 6
+                    q_upd_u = 'UPDATE productos SET stock = %s WHERE id = %s' if DB_URL else 'UPDATE productos SET stock = ? WHERE id = ?'
+                    cursor.execute(q_upd_u, (nuevo_stock_u, item['id']))
+                    break
+
+        elif any(m in nombre_prod for m in ['corona', 'pilsener', 'suprema']):
+            marca = 'corona' if 'corona' in nombre_prod else ('pilsener' if 'pilsener' in nombre_prod else 'suprema')
+            for item in todos:
+                item_nombre = item['nombre'].lower()
+                if marca in item_nombre and 'six' in item_nombre:
+                    stock_actual_u = int(prod['stock']) + 1
+                    possible_six = stock_actual_u // 6
+                    if int(item['stock']) < possible_six:
+                        q_upd_six = 'UPDATE productos SET stock = %s WHERE id = %s' if DB_URL else 'UPDATE productos SET stock = ? WHERE id = ?'
+                        cursor.execute(q_upd_six, (possible_six, item['id']))
+                    break
+
+        conn.commit()
+        conn.close()
+        return jsonify({"success": True})
+    
+    conn.close()
+    return jsonify({"success": False, "message": "Producto no encontrado"}), 400
+
 @app.route('/api/reiniciar-ventas', methods=['POST'])
 def reiniciar_ventas():
     conn = get_db()
     cursor = conn.cursor()
-    # Borrar la tabla y reinsertar los productos con sus stocks originales y 0 ventas
     cursor.execute('DELETE FROM productos')
     for p in PRODUCTOS_FACTURA:
         q = '''
