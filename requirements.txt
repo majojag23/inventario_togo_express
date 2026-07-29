@@ -2,3 +2,5 @@ Flask
 gunicorn
 Pillow
 Werkzeug
+psycopg2-binary
+SQLAlchemy
