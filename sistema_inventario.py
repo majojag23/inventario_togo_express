@@ -24,7 +24,7 @@ def get_db():
         return conn
 
 PRODUCTOS_FACTURA = [
-    ("Cerveza Corona Extra (330 mL) u", 2.25, 1.65, 24, "Cerveza Corona Extra (330 mL).jpg"),
+    ("Cerveza Corona Extra (330 mL)", 2.25, 1.65, 24, "Cerveza Corona Extra (330 mL).jpg"),
     ("Cerveza Corona Extra six", 12.50, 9.90, 4, "Cerveza Corona Extra six.jpg"),
     ("Cerveza Pilsener (355 mL) u", 1.75, 1.36, 36, "Cerveza Pilsener (355 mL) u.jpg"),
     ("Cerveza Pilsener (355 mL) six", 9.75, 8.15, 6, "Cerveza Pilsener (355 mL).jpg"),
@@ -61,13 +61,6 @@ PRODUCTOS_FACTURA = [
     ("Hielo Selectos 2", 1.60, 1.15, 2, "Hielo Selectos 2.jpg"),
     ("ALIMENTO P/PERRO", 4.25, 3.15, 2, "ALIMENTO P/PERRO.jpg")
 ]
-
-# MAPA DE EQUIVALENCIAS SIX PACK -> UNIDAD
-EQUIVALENCIAS_SIX = {
-    "Cerveza Corona Extra six": "Cerveza Corona Extra (330 mL) u",
-    "Cerveza Pilsener (355 mL) six": "Cerveza Pilsener (355 mL) u",
-    "Cerveza Suprema six": "Cerveza Suprema (330 mL) u"
-}
 
 def init_db():
     try:
@@ -162,22 +155,41 @@ def vender_producto(id):
     prod = cursor.fetchone()
     
     if prod and prod['stock'] > 0:
-        nombre_prod = prod['nombre']
+        nombre_prod = prod['nombre'].lower()
         
-        # 1. Restar 1 al producto vendido
+        # 1. Restar 1 al producto seleccionado
         q_upd = 'UPDATE productos SET stock = stock - 1, ventas = ventas + 1 WHERE id = %s' if DB_URL else 'UPDATE productos SET stock = stock - 1, ventas = ventas + 1 WHERE id = ?'
         cursor.execute(q_upd, (id,))
         
-        # 2. Si es un Six Pack, restar 6 a las Unidades sueltas
-        if nombre_prod in EQUIVALENCIAS_SIX:
-            nombre_unidad = EQUIVALENCIAS_SIX[nombre_prod]
-            cursor.execute('SELECT * FROM productos WHERE nombre = %s' if DB_URL else 'SELECT * FROM productos WHERE nombre = ?', (nombre_unidad,))
-            unidad_prod = cursor.fetchone()
-            
-            if unidad_prod:
-                nuevo_stock_u = max(0, int(unidad_prod['stock']) - 6)
-                q_upd_u = 'UPDATE productos SET stock = %s WHERE id = %s' if DB_URL else 'UPDATE productos SET stock = ? WHERE id = ?'
-                cursor.execute(q_upd_u, (nuevo_stock_u, unidad_prod['id']))
+        # 2. LÓGICA DE CERVEZAS (Six Pack <-> Unidades)
+        cursor.execute('SELECT * FROM productos')
+        todos = [dict(p) for p in cursor.fetchall()]
+        
+        # Si vendimos un Six Pack de cualquier marca (Corona, Pilsener, Suprema)
+        if 'six' in nombre_prod:
+            marca = nombre_prod.replace('six', '').replace('(355 ml)', '').replace('(330 ml)', '').strip()
+            # Buscar el producto individual que coincida con la marca
+            for item in todos:
+                item_nombre = item['nombre'].lower()
+                if marca in item_nombre and 'six' not in item_nombre:
+                    nuevo_stock_u = max(0, int(item['stock']) - 6)
+                    q_upd_u = 'UPDATE productos SET stock = %s WHERE id = %s' if DB_URL else 'UPDATE productos SET stock = ? WHERE id = ?'
+                    cursor.execute(q_upd_u, (nuevo_stock_u, item['id']))
+                    break
+
+        # Si vendimos una unidad suelta de cerveza
+        elif any(m in nombre_prod for m in ['corona', 'pilsener', 'suprema']):
+            marca = 'corona' if 'corona' in nombre_prod else ('pilsener' if 'pilsener' in nombre_prod else 'suprema')
+            # Buscar el Six Pack correspondiente para ajustar su disponibilidad si faltan unidades
+            for item in todos:
+                item_nombre = item['nombre'].lower()
+                if marca in item_nombre and 'six' in item_nombre:
+                    stock_actual_u = int(prod['stock']) - 1
+                    possible_six = stock_actual_u // 6
+                    if int(item['stock']) > possible_six:
+                        q_upd_six = 'UPDATE productos SET stock = %s WHERE id = %s' if DB_URL else 'UPDATE productos SET stock = ? WHERE id = ?'
+                        cursor.execute(q_upd_six, (possible_six, item['id']))
+                    break
 
         conn.commit()
         conn.close()
