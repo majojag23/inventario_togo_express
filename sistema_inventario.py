@@ -55,8 +55,7 @@ PRODUCTOS_FACTURA = [
     ("PALETA D/YOGURT", 1.25, 0.74, 6, "PALETA D/YOGURT.jpg"),
     ("PALETA TASTY", 1.00, 0.60, 6, "PALETA TASTY.jpg"),
     ("MALBORO GOLD", 3.75, 2.05, 10, "MALBORO GOLD.jpg"),
-    ("MALBORO FOREST", 4.99, 4.10, 10, "MALBORO FOREST.jpg"),
-    ("MALBORO VISTA", 4.50, 3.50, 10, "MALBORO VISTA.jpg"),
+    ("MALBORO VISTA / FOREST", 4.50, 3.50, 10, "MALBORO VISTA.jpg"),
     ("PALLMALL", 2.50, 1.95, 10, "PALLMALL.jpg"),
     ("HIELERA NAPOLI CO", 9.99, 7.00, 1, "HIELERA NAPOLI CO.jpg"),
     ("Hielo Selectos 2", 1.60, 1.15, 2, "Hielo Selectos 2.jpg"),
@@ -102,7 +101,7 @@ def init_db():
         elif isinstance(res, (tuple, list)):
             count = res[0]
 
-        if count < len(PRODUCTOS_FACTURA):
+        if count == 0:
             for p in PRODUCTOS_FACTURA:
                 q = '''
                     INSERT INTO productos (nombre, precio, costo, stock, ventas, imagen)
@@ -111,10 +110,7 @@ def init_db():
                     INSERT INTO productos (nombre, precio, costo, stock, ventas, imagen)
                     VALUES (?, ?, ?, ?, 0, ?)
                 '''
-                try:
-                    cursor.execute(q, p)
-                except Exception as ex:
-                    print("Error registrando prod:", ex)
+                cursor.execute(q, p)
             conn.commit()
 
         conn.close()
@@ -168,6 +164,15 @@ def vender_producto(id):
     
     conn.close()
     return jsonify({"success": False, "message": "Agotado"}), 400
+
+@app.route('/api/producto/eliminar/<int:id>', methods=['DELETE', 'POST'])
+def eliminar_producto(id):
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute('DELETE FROM productos WHERE id = %s' if DB_URL else 'DELETE FROM productos WHERE id = ?', (id,))
+    conn.commit()
+    conn.close()
+    return jsonify({"success": True})
 
 @app.route('/api/producto/guardar', methods=['POST'])
 def guardar_producto():
