@@ -101,7 +101,10 @@
                     </div>
                     <div class="col-12">
                         <div class="card border-0 shadow-sm p-3 rounded-4">
-                            <h6 class="fw-bold mb-3" style="color: var(--brand-navy);">🔥 Top Productos Más Vendidos</h6>
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h6 class="fw-bold mb-0" style="color: var(--brand-navy);">🔥 Top Productos Más Vendidos</h6>
+                                <button class="btn btn-outline-danger btn-sm fw-bold px-3" onclick="reiniciarVentas()">🔄 Reiniciar Ventas e Inventario</button>
+                            </div>
                             <canvas id="chartVentas" height="200"></canvas>
                         </div>
                     </div>
@@ -242,6 +245,16 @@
         async function vender(id) {
             const res = await fetch(`/api/vender/${id}`, { method: 'POST' });
             if (res.ok) cargarProductos();
+        }
+
+        async function reiniciarVentas() {
+            if (confirm("¿Estás segura de reiniciar todas las ventas acumuladas y restaurar los stocks iniciales?")) {
+                const res = await fetch('/api/reiniciar-ventas', { method: 'POST' });
+                if (res.ok) {
+                    alert("¡Ventas e inventario reiniciados con éxito!");
+                    cargarProductos();
+                }
+            }
         }
 
         async function eliminarProducto(id, nombre) {
