@@ -137,7 +137,17 @@ def get_productos():
     cursor.execute('SELECT * FROM productos ORDER BY nombre ASC')
     prods = cursor.fetchall()
     conn.close()
-    return jsonify([dict(p) for p in prods])
+    
+    lista = []
+    for p in prods:
+        d = dict(p)
+        d['precio'] = float(d['precio']) if d['precio'] is not None else 0.0
+        d['costo'] = float(d['costo']) if d['costo'] is not None else 0.0
+        d['stock'] = int(d['stock']) if d['stock'] is not None else 0
+        d['ventas'] = int(d['ventas']) if d['ventas'] is not None else 0
+        lista.append(d)
+        
+    return jsonify(lista)
 
 @app.route('/api/vender/<int:id>', methods=['POST'])
 def vender_producto(id):
