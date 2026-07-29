@@ -24,11 +24,11 @@ def get_db():
         return conn
 
 PRODUCTOS_FACTURA = [
-    ("Cerveza Corona Extra (330 mL)", 2.25, 1.65, 24, "Cerveza Corona Extra (330 mL).jpg"),
+    ("Cerveza Corona Extra (330 mL) u", 2.25, 1.65, 24, "Cerveza Corona Extra (330 mL).jpg"),
     ("Cerveza Corona Extra six", 12.50, 9.90, 4, "Cerveza Corona Extra six.jpg"),
     ("Cerveza Pilsener (355 mL) u", 1.75, 1.36, 36, "Cerveza Pilsener (355 mL) u.jpg"),
-    ("Cerveza Pilsener (355 mL)", 9.75, 8.15, 6, "Cerveza Pilsener (355 mL).jpg"),
-    ("Cerveza Suprema (330 mL)", 1.85, 1.42, 18, "Cerveza Suprema (330 mL).jpg"),
+    ("Cerveza Pilsener (355 mL) six", 9.75, 8.15, 6, "Cerveza Pilsener (355 mL).jpg"),
+    ("Cerveza Suprema (330 mL) u", 1.85, 1.42, 18, "Cerveza Suprema (330 mL).jpg"),
     ("Cerveza Suprema six", 10.25, 8.50, 3, "SUPREMA SIX.jpg"),
     ("Coca-Cola 2.5 L", 2.95, 2.13, 6, "Coca-Cola 2.5 L.jpg"),
     ("Coca-Cola Litro", 1.75, 1.30, 6, "Coca-Cola Litro.jpg"),
@@ -61,6 +61,13 @@ PRODUCTOS_FACTURA = [
     ("Hielo Selectos 2", 1.60, 1.15, 2, "Hielo Selectos 2.jpg"),
     ("ALIMENTO P/PERRO", 4.25, 3.15, 2, "ALIMENTO P/PERRO.jpg")
 ]
+
+# MAPA DE EQUIVALENCIAS SIX PACK -> UNIDAD
+EQUIVALENCIAS_SIX = {
+    "Cerveza Corona Extra six": "Cerveza Corona Extra (330 mL) u",
+    "Cerveza Pilsener (355 mL) six": "Cerveza Pilsener (355 mL) u",
+    "Cerveza Suprema six": "Cerveza Suprema (330 mL) u"
+}
 
 def init_db():
     try:
@@ -150,14 +157,28 @@ def vender_producto(id):
     conn = get_db()
     cursor = conn.cursor()
     
-    cursor.execute('SELECT * FROM productos WHERE id = %s' if DB_URL else 'SELECT * FROM productos WHERE id = ?', (id,))
+    q_sel = 'SELECT * FROM productos WHERE id = %s' if DB_URL else 'SELECT * FROM productos WHERE id = ?'
+    cursor.execute(q_sel, (id,))
     prod = cursor.fetchone()
     
     if prod and prod['stock'] > 0:
-        cursor.execute(
-            'UPDATE productos SET stock = stock - 1, ventas = ventas + 1 WHERE id = %s' if DB_URL else 'UPDATE productos SET stock = stock - 1, ventas = ventas + 1 WHERE id = ?',
-            (id,)
-        )
+        nombre_prod = prod['nombre']
+        
+        # 1. Restar 1 al producto vendido
+        q_upd = 'UPDATE productos SET stock = stock - 1, ventas = ventas + 1 WHERE id = %s' if DB_URL else 'UPDATE productos SET stock = stock - 1, ventas = ventas + 1 WHERE id = ?'
+        cursor.execute(q_upd, (id,))
+        
+        # 2. Si es un Six Pack, restar 6 a las Unidades sueltas
+        if nombre_prod in EQUIVALENCIAS_SIX:
+            nombre_unidad = EQUIVALENCIAS_SIX[nombre_prod]
+            cursor.execute('SELECT * FROM productos WHERE nombre = %s' if DB_URL else 'SELECT * FROM productos WHERE nombre = ?', (nombre_unidad,))
+            unidad_prod = cursor.fetchone()
+            
+            if unidad_prod:
+                nuevo_stock_u = max(0, int(unidad_prod['stock']) - 6)
+                q_upd_u = 'UPDATE productos SET stock = %s WHERE id = %s' if DB_URL else 'UPDATE productos SET stock = ? WHERE id = ?'
+                cursor.execute(q_upd_u, (nuevo_stock_u, unidad_prod['id']))
+
         conn.commit()
         conn.close()
         return jsonify({"success": True})
