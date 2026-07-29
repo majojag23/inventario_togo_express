@@ -165,10 +165,8 @@ def vender_producto(id):
         cursor.execute('SELECT * FROM productos')
         todos = [dict(p) for p in cursor.fetchall()]
         
-        # Si vendimos un Six Pack de cualquier marca (Corona, Pilsener, Suprema)
         if 'six' in nombre_prod:
             marca = nombre_prod.replace('six', '').replace('(355 ml)', '').replace('(330 ml)', '').strip()
-            # Buscar el producto individual que coincida con la marca
             for item in todos:
                 item_nombre = item['nombre'].lower()
                 if marca in item_nombre and 'six' not in item_nombre:
@@ -177,10 +175,8 @@ def vender_producto(id):
                     cursor.execute(q_upd_u, (nuevo_stock_u, item['id']))
                     break
 
-        # Si vendimos una unidad suelta de cerveza
         elif any(m in nombre_prod for m in ['corona', 'pilsener', 'suprema']):
             marca = 'corona' if 'corona' in nombre_prod else ('pilsener' if 'pilsener' in nombre_prod else 'suprema')
-            # Buscar el Six Pack correspondiente para ajustar su disponibilidad si faltan unidades
             for item in todos:
                 item_nombre = item['nombre'].lower()
                 if marca in item_nombre and 'six' in item_nombre:
@@ -197,6 +193,25 @@ def vender_producto(id):
     
     conn.close()
     return jsonify({"success": False, "message": "Agotado"}), 400
+
+@app.route('/api/reiniciar-ventas', methods=['POST'])
+def reiniciar_ventas():
+    conn = get_db()
+    cursor = conn.cursor()
+    # Borrar la tabla y reinsertar los productos con sus stocks originales y 0 ventas
+    cursor.execute('DELETE FROM productos')
+    for p in PRODUCTOS_FACTURA:
+        q = '''
+            INSERT INTO productos (nombre, precio, costo, stock, ventas, imagen)
+            VALUES (%s, %s, %s, %s, 0, %s)
+        ''' if DB_URL else '''
+            INSERT INTO productos (nombre, precio, costo, stock, ventas, imagen)
+            VALUES (?, ?, ?, ?, 0, ?)
+        '''
+        cursor.execute(q, p)
+    conn.commit()
+    conn.close()
+    return jsonify({"success": True})
 
 @app.route('/api/producto/eliminar/<int:id>', methods=['DELETE', 'POST'])
 def eliminar_producto(id):
