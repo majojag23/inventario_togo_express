@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TOGO EXPRESS - Siempre Frío, Siempre Listo</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --brand-navy: #0b1a30;
+            --brand-red: #e61c24;
+            --brand-ice: #00a8ff;
+            --brand-bg: #f0f4f9;
+        }
+        body { background-color: var(--brand-bg); font-family: 'Poppins', sans-serif; }
+        .navbar-brand-custom { display: flex; align-items: center; gap: 12px; }
+        .logo-img { height: 48px; width: 48px; border-radius: 50%; border: 2px solid var(--brand-ice); object-fit: cover; }
+        .header-slogan { font-size: 0.65rem; color: var(--brand-ice); letter-spacing: 1px; font-weight: 700; }
+        .btn-brand-red { background-color: var(--brand-red); color: white; font-weight: 700; border-radius: 8px; border: none; box-shadow: 0 4px 10px rgba(230, 28, 36, 0.3); }
+        .btn-brand-red:hover { background-color: #c4121a; color: white; }
+        .product-card { border: 2px solid #e2e8f0; border-radius: 16px; transition: all 0.2s ease-in-out; background: #ffffff; overflow: hidden; }
+        .product-card:hover { border-color: var(--brand-ice); transform: translateY(-3px); box-shadow: 0 8px 20px rgba(0, 168, 255, 0.15); }
+        .product-img { height: 125px; object-fit: contain; background-color: #ffffff; padding: 10px; }
+        .badge-stock { font-weight: 700; font-size: 0.75rem; border-radius: 6px; }
+        .nav-pills .nav-link { color: var(--brand-navy); border-radius: 10px; }
+        .nav-pills .nav-link.active { background-color: var(--brand-navy); color: white; border-bottom: 3px solid var(--brand-ice); }
+        .price-text { color: var(--brand-navy); font-weight: 800; }
+    </style>
+</head>
+<body class="pb-5">
+
+    <nav class="navbar sticky-top shadow-sm px-3" style="background-color: var(--brand-navy);">
+        <div class="navbar-brand-custom">
+            <img src="/logo_togo_express.jpg" alt="TOGO EXPRESS" class="logo-img" onerror="this.style.display='none'">
+            <div>
+                <span class="fw-extrabold text-white fs-5 d-block">TOGO <span style="color: var(--brand-red);">EXPRESS</span></span>
+                <span class="header-slogan d-block text-uppercase">SIEMPRE FRÍO, SIEMPRE LISTO ❄️</span>
+            </div>
+        </div>
+        <button class="btn btn-brand-red btn-sm px-3 py-2" onclick="abrirModalProducto()">+ Nuevo Producto</button>
+    </nav>
+
+    <div class="container my-3">
+        <ul class="nav nav-pills nav-justified bg-white p-2 rounded-4 shadow-sm mb-3" id="pills-tab">
+            <li class="nav-item">
+                <button class="nav-link active fw-bold" id="tab-ventas" data-bs-toggle="pill" data-bs-target="#content-ventas">🛒 Ventas</button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link fw-bold" id="tab-tabla" data-bs-toggle="pill" data-bs-target="#content-tabla">📋 Inventario</button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link fw-bold" id="tab-metricas" data-bs-toggle="pill" data-bs-target="#content-metricas">📊 Métricas</button>
+            </li>
+        </ul>
+
+        <div class="tab-content" id="pills-tabContent">
+            <div class="tab-pane fade show active" id="content-ventas">
+                <div class="row g-2" id="grid-productos"></div>
+            </div>
+
+            <div class="tab-pane fade" id="content-tabla">
+                <div class="card border-0 shadow-sm p-3 rounded-4">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle" id="tabla-prod">
+                            <thead style="background-color: var(--brand-navy);" class="text-white">
+                                <tr>
+                                    <th>Producto</th>
+                                    <th>Stock</th>
+                                    <th>Precio</th>
+                                    <th>Costo</th>
+                                    <th>Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbody-inventario"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="content-metricas">
+                <div class="row g-3">
+                    <div class="col-12 col-md-4">
+                        <div class="card border-0 shadow-sm p-3 text-center text-white rounded-4" style="background-color: var(--brand-navy);">
+                            <h6 class="text-uppercase" style="color: var(--brand-ice);">Valor Inv. Actual</h6>
+                            <h3 id="metric-valor" class="fw-bold">$0.00</h3>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-4">
+                        <div class="card border-0 shadow-sm p-3 text-center text-white rounded-4" style="background-color: #10b981;">
+                            <h6 class="text-uppercase">Ventas Totales</h6>
+                            <h3 id="metric-ventas" class="fw-bold">$0.00</h3>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-4">
+                        <div class="card border-0 shadow-sm p-3 text-center text-white rounded-4" style="background-color: #8b5cf6;">
+                            <h6 class="text-uppercase">Ganancia Estimada</h6>
+                            <h3 id="metric-ganancia" class="fw-bold">$0.00</h3>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="card border-0 shadow-sm p-3 rounded-4">
+                            <h6 class="fw-bold mb-3" style="color: var(--brand-navy);">🔥 Top Productos Más Vendidos</h6>
+                            <canvas id="chartVentas" height="200"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalProducto" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 border-0">
+                <form id="formProducto" enctype="multipart/form-data">
+                    <div class="modal-header text-white" style="background-color: var(--brand-navy);">
+                        <h5 class="modal-title fw-bold" id="modalTitulo">Editar Producto</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="hidden" name="id" id="prod-id">
+                        <div class="mb-2">
+                            <label class="form-label fw-bold">Nombre del Producto</label>
+                            <input type="text" class="form-control" name="nombre" id="prod-nombre" required>
+                        </div>
+                        <div class="row g-2 mb-2">
+                            <div class="col-6">
+                                <label class="form-label fw-bold">Precio Venta ($)</label>
+                                <input type="number" step="0.01" class="form-control" name="precio" id="prod-precio" required>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label fw-bold">Costo Factura ($)</label>
+                                <input type="number" step="0.01" class="form-control" name="costo" id="prod-costo" required>
+                            </div>
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label fw-bold">Stock Actual</label>
+                            <input type="number" class="form-control" name="stock" id="prod-stock" required>
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label fw-bold">Fotografía del Producto</label>
+                            <input type="file" class="form-control" name="imagen" accept="image/*">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-brand-red fw-bold">Guardar Cambios</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let productosData = [];
+        let chartInstance = null;
+        const modalObj = new bootstrap.Modal(document.getElementById('modalProducto'));
+
+        async function cargarProductos() {
+            const res = await fetch('/api/productos');
+            productosData = await res.json();
+            renderVentas();
+            renderTabla();
+            renderMetricas();
+        }
+
+        function renderVentas() {
+            const grid = document.getElementById('grid-productos');
+            grid.innerHTML = '';
+            productosData.forEach(p => {
+                const bgStock = p.stock === 0 ? 'bg-danger text-white' : (p.stock <= 3 ? 'bg-warning text-dark' : 'bg-light text-dark border');
+                grid.innerHTML += `
+                    <div class="col-6 col-sm-4 col-md-3">
+                        <div class="card product-card h-100 shadow-sm text-center p-2">
+                            <img src="/uploads/${p.imagen || 'default.jpg'}" class="product-img w-100" onerror="this.src='https://via.placeholder.com/150'">
+                            <div class="card-body p-1 d-flex flex-column justify-content-between">
+                                <h6 class="card-title text-truncate fw-bold mb-1" style="font-size:0.85rem; color: var(--brand-navy);">${p.nombre}</h6>
+                                <span class="price-text fs-5">$${p.precio.toFixed(2)}</span>
+                                <span class="badge ${bgStock} badge-stock my-1">Stock: ${p.stock} u</span>
+                                <button class="btn btn-brand-red btn-sm w-100 fw-bold mt-1" onclick="vender(${p.id})" ${p.stock === 0 ? 'disabled' : ''}>
+                                    🛒 VENDER
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function renderTabla() {
+            const tbody = document.getElementById('tbody-inventario');
+            tbody.innerHTML = '';
+            productosData.forEach(p => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td class="fw-bold">${p.nombre}</td>
+                        <td><span class="badge ${p.stock <= 3 ? 'bg-warning text-dark' : 'bg-info'}">${p.stock} u</span></td>
+                        <td class="text-success fw-bold">$${p.precio.toFixed(2)}</td>
+                        <td class="text-muted">$${p.costo.toFixed(2)}</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary fw-bold" onclick="editarProducto(${p.id})">✏️ Editar</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        function renderMetricas() {
+            let totalVal = 0, totalVentas = 0, totalGanancia = 0;
+            productosData.forEach(p => {
+                totalVal += p.stock * p.precio;
+                totalVentas += p.ventas * p.precio;
+                totalGanancia += p.ventas * (p.precio - p.costo);
+            });
+
+            document.getElementById('metric-valor').innerText = `$${totalVal.toFixed(2)}`;
+            document.getElementById('metric-ventas').innerText = `$${totalVentas.toFixed(2)}`;
+            document.getElementById('metric-ganancia').innerText = `$${totalGanancia.toFixed(2)}`;
+
+            const topSellers = [...productosData].sort((a,b) => b.ventas - a.ventas).slice(0, 5);
+            const ctx = document.getElementById('chartVentas').getContext('2d');
+
+            if (chartInstance) chartInstance.destroy();
+
+            chartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: topSellers.map(p => p.nombre.substring(0, 15)),
+                    datasets: [{
+                        label: 'Unidades Vendidas',
+                        data: topSellers.map(p => p.ventas),
+                        backgroundColor: '#e61c24'
+                    }]
+                },
+                options: { responsive: true, plugins: { legend: { display: false } } }
+            });
+        }
+
+        async function vender(id) {
+            const res = await fetch(`/api/vender/${id}`, { method: 'POST' });
+            if (res.ok) cargarProductos();
+        }
+
+        function abrirModalProducto() {
+            document.getElementById('formProducto').reset();
+            document.getElementById('prod-id').value = '';
+            document.getElementById('modalTitulo').innerText = 'Añadir Nuevo Producto';
+            modalObj.show();
+        }
+
+        function editarProducto(id) {
+            const p = productosData.find(prod => prod.id === id);
+            if (p) {
+                document.getElementById('prod-id').value = p.id;
+                document.getElementById('prod-nombre').value = p.nombre;
+                document.getElementById('prod-precio').value = p.precio;
+                document.getElementById('prod-costo').value = p.costo;
+                document.getElementById('prod-stock').value = p.stock;
+                document.getElementById('modalTitulo').innerText = 'Editar Producto';
+                modalObj.show();
+            }
+        }
+
+        document.getElementById('formProducto').onsubmit = async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const res = await fetch('/api/producto/guardar', { method: 'POST', body: formData });
+            if (res.ok) {
+                modalObj.hide();
+                cargarProductos();
+            }
+        };
+
+        cargarProductos();
+    </script>
+</body>
+</html>
