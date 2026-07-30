@@ -81,29 +81,35 @@
 
             <div class="tab-pane fade" id="content-metricas">
                 <div class="row g-3">
-                    <div class="col-12 col-md-4">
-                        <div class="card border-0 shadow-sm p-3 text-center text-white rounded-4" style="background-color: var(--brand-navy);">
-                            <h6 class="text-uppercase" style="color: var(--brand-ice);">Valor Inv. Actual</h6>
-                            <h3 id="metric-valor" class="fw-bold">$0.00</h3>
+                    <div class="col-6 col-md-3">
+                        <div class="card border-0 shadow-sm p-3 text-center text-white rounded-4" style="background-color: #00a8ff;">
+                            <h6 class="text-uppercase font-bold" style="font-size: 0.75rem;">📅 Ventas de Hoy</h6>
+                            <h3 id="metric-hoy" class="fw-bold mb-0">$0.00</h3>
                         </div>
                     </div>
-                    <div class="col-12 col-md-4">
+                    <div class="col-6 col-md-3">
                         <div class="card border-0 shadow-sm p-3 text-center text-white rounded-4" style="background-color: #10b981;">
-                            <h6 class="text-uppercase">Ventas Totales</h6>
-                            <h3 id="metric-ventas" class="fw-bold">$0.00</h3>
+                            <h6 class="text-uppercase font-bold" style="font-size: 0.75rem;">📆 Ventas del Mes</h6>
+                            <h3 id="metric-mes" class="fw-bold mb-0">$0.00</h3>
                         </div>
                     </div>
-                    <div class="col-12 col-md-4">
+                    <div class="col-6 col-md-3">
+                        <div class="card border-0 shadow-sm p-3 text-center text-white rounded-4" style="background-color: var(--brand-navy);">
+                            <h6 class="text-uppercase font-bold" style="font-size: 0.75rem;">💰 Valor Inv. Actual</h6>
+                            <h3 id="metric-valor" class="fw-bold mb-0">$0.00</h3>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
                         <div class="card border-0 shadow-sm p-3 text-center text-white rounded-4" style="background-color: #8b5cf6;">
-                            <h6 class="text-uppercase">Ganancia Estimada</h6>
-                            <h3 id="metric-ganancia" class="fw-bold">$0.00</h3>
+                            <h6 class="text-uppercase font-bold" style="font-size: 0.75rem;">📈 Ganancia Est.</h6>
+                            <h3 id="metric-ganancia" class="fw-bold mb-0">$0.00</h3>
                         </div>
                     </div>
                     <div class="col-12">
                         <div class="card border-0 shadow-sm p-3 rounded-4">
                             <div class="d-flex justify-content-between align-items-center mb-3">
                                 <h6 class="fw-bold mb-0" style="color: var(--brand-navy);">🔥 Top Productos Más Vendidos</h6>
-                                <button class="btn btn-outline-danger btn-sm fw-bold px-3" onclick="reiniciarVentas()">🔄 Reiniciar Ventas e Inventario</button>
+                                <button class="btn btn-outline-danger btn-sm fw-bold px-3" onclick="reiniciarVentas()">🔄 Reiniciar Histórico</button>
                             </div>
                             <canvas id="chartVentas" height="200"></canvas>
                         </div>
@@ -214,17 +220,23 @@
             });
         }
 
-        function renderMetricas() {
-            let totalVal = 0, totalVentas = 0, totalGanancia = 0;
+        async function renderMetricas() {
+            let totalVal = 0, totalGanancia = 0;
             productosData.forEach(p => {
                 totalVal += p.stock * p.precio;
-                totalVentas += p.ventas * p.precio;
                 totalGanancia += p.ventas * (p.precio - p.costo);
             });
 
             document.getElementById('metric-valor').innerText = `$${totalVal.toFixed(2)}`;
-            document.getElementById('metric-ventas').innerText = `$${totalVentas.toFixed(2)}`;
             document.getElementById('metric-ganancia').innerText = `$${totalGanancia.toFixed(2)}`;
+
+            // Cargar datos diarios y mensuales
+            const resResumen = await fetch('/api/resumen-ventas');
+            if (resResumen.ok) {
+                const dataResumen = await resResumen.json();
+                document.getElementById('metric-hoy').innerText = `$${dataResumen.hoy.toFixed(2)}`;
+                document.getElementById('metric-mes').innerText = `$${dataResumen.mes.toFixed(2)}`;
+            }
 
             const topSellers = [...productosData].sort((a,b) => b.ventas - a.ventas).slice(0, 5);
             const ctx = document.getElementById('chartVentas').getContext('2d');
@@ -256,10 +268,10 @@
         }
 
         async function reiniciarVentas() {
-            if (confirm("¿Estás segura de reiniciar todas las ventas acumuladas y restaurar los stocks iniciales?")) {
+            if (confirm("¿Estás segura de reiniciar todas las ventas acumuladas y el historial contable?")) {
                 const res = await fetch('/api/reiniciar-ventas', { method: 'POST' });
                 if (res.ok) {
-                    alert("¡Ventas e inventario reiniciados con éxito!");
+                    alert("¡Histórico de ventas e inventario reiniciado!");
                     cargarProductos();
                 }
             }
