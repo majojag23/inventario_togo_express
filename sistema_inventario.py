@@ -174,11 +174,9 @@ def vender_producto(id):
         nombre_prod = prod['nombre'].lower()
         precio_prod = float(prod['precio'])
         
-        # 1. Restar 1 al stock y sumar a ventas acumuladas
         q_upd = 'UPDATE productos SET stock = stock - 1, ventas = ventas + 1 WHERE id = %s' if DB_URL else 'UPDATE productos SET stock = stock - 1, ventas = ventas + 1 WHERE id = ?'
         cursor.execute(q_upd, (id,))
         
-        # 2. Registrar la venta en la tabla de historial con la fecha y hora actual
         q_hist = 'INSERT INTO historial_ventas (producto_id, monto, fecha) VALUES (%s, %s, %s)' if DB_URL else 'INSERT INTO historial_ventas (producto_id, monto, fecha) VALUES (?, ?, ?)'
         cursor.execute(q_hist, (id, precio_prod, datetime.now()))
         
@@ -231,7 +229,6 @@ def devolver_producto(id):
         q_upd = 'UPDATE productos SET stock = stock + 1, ventas = %s WHERE id = %s' if DB_URL else 'UPDATE productos SET stock = stock + 1, ventas = ? WHERE id = ?'
         cursor.execute(q_upd, (nuevas_ventas, id))
         
-        # Registrar importe negativo para restar del historial diario/mensual
         q_hist = 'INSERT INTO historial_ventas (producto_id, monto, fecha) VALUES (%s, %s, %s)' if DB_URL else 'INSERT INTO historial_ventas (producto_id, monto, fecha) VALUES (?, ?, ?)'
         cursor.execute(q_hist, (id, -precio_prod, datetime.now()))
 
@@ -267,6 +264,19 @@ def devolver_producto(id):
     conn.close()
     return jsonify({"success": False, "message": "Producto no encontrado"}), 400
 
+@app.route('/api/agregar-venta-manual', methods=['POST'])
+def agregar_venta_manual():
+    monto = float(request.json.get('monto', 0))
+    if monto > 0:
+        conn = get_db()
+        cursor = conn.cursor()
+        q_hist = 'INSERT INTO historial_ventas (producto_id, monto, fecha) VALUES (NULL, %s, %s)' if DB_URL else 'INSERT INTO historial_ventas (producto_id, monto, fecha) VALUES (NULL, ?, ?)'
+        cursor.execute(q_hist, (monto, datetime.now()))
+        conn.commit()
+        conn.close()
+        return jsonify({"success": True})
+    return jsonify({"success": False}), 400
+
 @app.route('/api/resumen-ventas', methods=['GET'])
 def resumen_ventas():
     conn = get_db()
@@ -275,7 +285,6 @@ def resumen_ventas():
     hoy = datetime.now().strftime('%Y-%m-%d')
     mes = datetime.now().strftime('%Y-%m')
     
-    # Total de Hoy
     if DB_URL:
         cursor.execute("SELECT COALESCE(SUM(monto), 0) as total FROM historial_ventas WHERE TO_CHAR(fecha, 'YYYY-MM-DD') = %s", (hoy,))
     else:
@@ -283,7 +292,6 @@ def resumen_ventas():
     res_hoy = cursor.fetchone()
     total_hoy = float(list(res_hoy.values())[0] if isinstance(res_hoy, dict) else res_hoy[0])
     
-    # Total del Mes
     if DB_URL:
         cursor.execute("SELECT COALESCE(SUM(monto), 0) as total FROM historial_ventas WHERE TO_CHAR(fecha, 'YYYY-MM') = %s", (mes,))
     else:
