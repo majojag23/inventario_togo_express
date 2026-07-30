@@ -1,5 +1,6 @@
 import os
 import sqlite3
+from datetime import datetime
 from flask import Flask, render_template, request, jsonify, send_from_directory
 from werkzeug.utils import secure_filename
 import psycopg2
@@ -67,7 +68,7 @@ def init_db():
         conn = get_db()
         cursor = conn.cursor()
         
-        create_query = '''
+        cursor.execute('''
             CREATE TABLE IF NOT EXISTS productos (
                 id SERIAL PRIMARY KEY,
                 nombre VARCHAR(255) NOT NULL,
@@ -87,9 +88,24 @@ def init_db():
                 ventas INTEGER DEFAULT 0,
                 imagen TEXT
             )
-        '''
-        
-        cursor.execute(create_query)
+        ''')
+
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS historial_ventas (
+                id SERIAL PRIMARY KEY,
+                producto_id INTEGER,
+                monto NUMERIC(10,2) NOT NULL,
+                fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''' if DB_URL else '''
+            CREATE TABLE IF NOT EXISTS historial_ventas (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                producto_id INTEGER,
+                monto REAL NOT NULL,
+                fecha DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+
         conn.commit()
 
         cursor.execute("SELECT COUNT(*) FROM productos")
@@ -101,8 +117,6 @@ def init_db():
         elif isinstance(res, (tuple, list)):
             count = res[0]
 
-        # SOLO inserta la lista si la base de datos está COMPLETAMENTE VACÍA (0 items)
-        # De este modo, NUNCA borra los precios ni imágenes modificadas por ti.
         if count == 0:
             for p in PRODUCTOS_FACTURA:
                 q = '''
@@ -158,9 +172,15 @@ def vender_producto(id):
     
     if prod and prod['stock'] > 0:
         nombre_prod = prod['nombre'].lower()
+        precio_prod = float(prod['precio'])
         
+        # 1. Restar 1 al stock y sumar a ventas acumuladas
         q_upd = 'UPDATE productos SET stock = stock - 1, ventas = ventas + 1 WHERE id = %s' if DB_URL else 'UPDATE productos SET stock = stock - 1, ventas = ventas + 1 WHERE id = ?'
         cursor.execute(q_upd, (id,))
+        
+        # 2. Registrar la venta en la tabla de historial con la fecha y hora actual
+        q_hist = 'INSERT INTO historial_ventas (producto_id, monto, fecha) VALUES (%s, %s, %s)' if DB_URL else 'INSERT INTO historial_ventas (producto_id, monto, fecha) VALUES (?, ?, ?)'
+        cursor.execute(q_hist, (id, precio_prod, datetime.now()))
         
         cursor.execute('SELECT * FROM productos')
         todos = [dict(p) for p in cursor.fetchall()]
@@ -205,11 +225,16 @@ def devolver_producto(id):
     
     if prod:
         nombre_prod = prod['nombre'].lower()
+        precio_prod = float(prod['precio'])
         nuevas_ventas = max(0, int(prod['ventas']) - 1)
         
         q_upd = 'UPDATE productos SET stock = stock + 1, ventas = %s WHERE id = %s' if DB_URL else 'UPDATE productos SET stock = stock + 1, ventas = ? WHERE id = ?'
         cursor.execute(q_upd, (nuevas_ventas, id))
         
+        # Registrar importe negativo para restar del historial diario/mensual
+        q_hist = 'INSERT INTO historial_ventas (producto_id, monto, fecha) VALUES (%s, %s, %s)' if DB_URL else 'INSERT INTO historial_ventas (producto_id, monto, fecha) VALUES (?, ?, ?)'
+        cursor.execute(q_hist, (id, -precio_prod, datetime.now()))
+
         cursor.execute('SELECT * FROM productos')
         todos = [dict(p) for p in cursor.fetchall()]
         
@@ -242,11 +267,39 @@ def devolver_producto(id):
     conn.close()
     return jsonify({"success": False, "message": "Producto no encontrado"}), 400
 
+@app.route('/api/resumen-ventas', methods=['GET'])
+def resumen_ventas():
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    hoy = datetime.now().strftime('%Y-%m-%d')
+    mes = datetime.now().strftime('%Y-%m')
+    
+    # Total de Hoy
+    if DB_URL:
+        cursor.execute("SELECT COALESCE(SUM(monto), 0) as total FROM historial_ventas WHERE TO_CHAR(fecha, 'YYYY-MM-DD') = %s", (hoy,))
+    else:
+        cursor.execute("SELECT COALESCE(SUM(monto), 0) as total FROM historial_ventas WHERE strftime('%Y-%m-%d', fecha) = ?", (hoy,))
+    res_hoy = cursor.fetchone()
+    total_hoy = float(list(res_hoy.values())[0] if isinstance(res_hoy, dict) else res_hoy[0])
+    
+    # Total del Mes
+    if DB_URL:
+        cursor.execute("SELECT COALESCE(SUM(monto), 0) as total FROM historial_ventas WHERE TO_CHAR(fecha, 'YYYY-MM') = %s", (mes,))
+    else:
+        cursor.execute("SELECT COALESCE(SUM(monto), 0) as total FROM historial_ventas WHERE strftime('%Y-%m', fecha) = ?", (mes,))
+    res_mes = cursor.fetchone()
+    total_mes = float(list(res_mes.values())[0] if isinstance(res_mes, dict) else res_mes[0])
+
+    conn.close()
+    return jsonify({"hoy": total_hoy, "mes": total_mes})
+
 @app.route('/api/reiniciar-ventas', methods=['POST'])
 def reiniciar_ventas():
     conn = get_db()
     cursor = conn.cursor()
     cursor.execute('DELETE FROM productos')
+    cursor.execute('DELETE FROM historial_ventas')
     for p in PRODUCTOS_FACTURA:
         q = '''
             INSERT INTO productos (nombre, precio, costo, stock, ventas, imagen)
