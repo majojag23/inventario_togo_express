@@ -107,9 +107,12 @@
                     </div>
                     <div class="col-12">
                         <div class="card border-0 shadow-sm p-3 rounded-4">
-                            <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
                                 <h6 class="fw-bold mb-0" style="color: var(--brand-navy);">🔥 Top Productos Más Vendidos</h6>
-                                <button class="btn btn-outline-danger btn-sm fw-bold px-3" onclick="reiniciarVentas()">🔄 Reiniciar Histórico</button>
+                                <div>
+                                    <button class="btn btn-outline-success btn-sm fw-bold me-2" onclick="agregarVentaManual()">💵 + Ingresar Venta Anterior ($22)</button>
+                                    <button class="btn btn-outline-danger btn-sm fw-bold" onclick="reiniciarVentas()">🔄 Reiniciar Histórico</button>
+                                </div>
                             </div>
                             <canvas id="chartVentas" height="200"></canvas>
                         </div>
@@ -230,7 +233,6 @@
             document.getElementById('metric-valor').innerText = `$${totalVal.toFixed(2)}`;
             document.getElementById('metric-ganancia').innerText = `$${totalGanancia.toFixed(2)}`;
 
-            // Cargar datos diarios y mensuales
             const resResumen = await fetch('/api/resumen-ventas');
             if (resResumen.ok) {
                 const dataResumen = await resResumen.json();
@@ -265,6 +267,21 @@
         async function devolver(id) {
             const res = await fetch(`/api/devolver/${id}`, { method: 'POST' });
             if (res.ok) cargarProductos();
+        }
+
+        async function agregarVentaManual() {
+            const monto = prompt("Ingresa el monto a sumar al acumulado de hoy:", "22.00");
+            if (monto && !isNaN(monto)) {
+                const res = await fetch('/api/agregar-venta-manual', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({monto: parseFloat(monto)})
+                });
+                if (res.ok) {
+                    alert("¡Monto sumado con éxito a las ventas de hoy!");
+                    cargarProductos();
+                }
+            }
         }
 
         async function reiniciarVentas() {
