@@ -101,6 +101,8 @@ def init_db():
         elif isinstance(res, (tuple, list)):
             count = res[0]
 
+        # SOLO inserta la lista si la base de datos está COMPLETAMENTE VACÍA (0 items)
+        # De este modo, NUNCA borra los precios ni imágenes modificadas por ti.
         if count == 0:
             for p in PRODUCTOS_FACTURA:
                 q = '''
@@ -205,14 +207,12 @@ def devolver_producto(id):
         nombre_prod = prod['nombre'].lower()
         nuevas_ventas = max(0, int(prod['ventas']) - 1)
         
-        # 1. Devolver 1 al stock y restar 1 a las ventas
         q_upd = 'UPDATE productos SET stock = stock + 1, ventas = %s WHERE id = %s' if DB_URL else 'UPDATE productos SET stock = stock + 1, ventas = ? WHERE id = ?'
         cursor.execute(q_upd, (nuevas_ventas, id))
         
         cursor.execute('SELECT * FROM productos')
         todos = [dict(p) for p in cursor.fetchall()]
         
-        # 2. Devolución de Cervezas (Restaurar 6 si devolvieron un Six Pack)
         if 'six' in nombre_prod:
             marca = nombre_prod.replace('six', '').replace('(355 ml)', '').replace('(330 ml)', '').strip()
             for item in todos:
