@@ -194,11 +194,9 @@ def vender_producto(id):
         nombre_prod = prod['nombre'].lower()
         precio_prod = float(prod['precio'])
         
-        # 1. Restar 1 al producto vendido
         q_upd = 'UPDATE productos SET stock = stock - 1, ventas = ventas + 1 WHERE id = %s' if DB_URL else 'UPDATE productos SET stock = stock - 1, ventas = ventas + 1 WHERE id = ?'
         cursor.execute(q_upd, (id,))
         
-        # 2. Registrar la venta
         q_hist = 'INSERT INTO historial_ventas (producto_id, monto, fecha) VALUES (%s, %s, %s)' if DB_URL else 'INSERT INTO historial_ventas (producto_id, monto, fecha) VALUES (?, ?, ?)'
         cursor.execute(q_hist, (id, precio_prod, datetime.now()))
         
@@ -213,7 +211,6 @@ def vender_producto(id):
                 item_nombre = item['nombre'].lower()
                 item_marca, item_medida = extraer_marca_medida(item_nombre)
                 
-                # Deben coincidir MARCA y MEDIDA exactas
                 if item_marca == marca and item_medida == medida:
                     if es_six and 'six' not in item_nombre:
                         nuevo_stock_u = max(0, int(item['stock']) - 6)
@@ -324,6 +321,64 @@ def resumen_ventas():
 
     conn.close()
     return jsonify({"hoy": total_hoy, "mes": total_mes})
+
+@app.route('/api/historial-ventas/<string:tipo>', methods=['GET'])
+def detalle_historial(tipo):
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    hoy = datetime.now().strftime('%Y-%m-%d')
+    mes = datetime.now().strftime('%Y-%m')
+    
+    if tipo == 'hoy':
+        q = '''
+            SELECT h.id, COALESCE(p.nombre, 'Venta Manual / Registro Anterior') as producto, 
+                   h.monto, h.fecha 
+            FROM historial_ventas h 
+            LEFT JOIN productos p ON h.producto_id = p.id 
+            WHERE TO_CHAR(h.fecha, 'YYYY-MM-DD') = %s 
+            ORDER BY h.fecha DESC
+        ''' if DB_URL else '''
+            SELECT h.id, COALESCE(p.nombre, 'Venta Manual / Registro Anterior') as producto, 
+                   h.monto, h.fecha 
+            FROM historial_ventas h 
+            LEFT JOIN productos p ON h.producto_id = p.id 
+            WHERE strftime('%Y-%m-%d', h.fecha) = ? 
+            ORDER BY h.fecha DESC
+        '''
+        cursor.execute(q, (hoy,))
+    else:
+        q = '''
+            SELECT h.id, COALESCE(p.nombre, 'Venta Manual / Registro Anterior') as producto, 
+                   h.monto, h.fecha 
+            FROM historial_ventas h 
+            LEFT JOIN productos p ON h.producto_id = p.id 
+            WHERE TO_CHAR(h.fecha, 'YYYY-MM') = %s 
+            ORDER BY h.fecha DESC
+        ''' if DB_URL else '''
+            SELECT h.id, COALESCE(p.nombre, 'Venta Manual / Registro Anterior') as producto, 
+                   h.monto, h.fecha 
+            FROM historial_ventas h 
+            LEFT JOIN productos p ON h.producto_id = p.id 
+            WHERE strftime('%Y-%m', h.fecha) = ? 
+            ORDER BY h.fecha DESC
+        '''
+        cursor.execute(q, (mes,))
+        
+    filas = cursor.fetchall()
+    conn.close()
+    
+    resultado = []
+    for f in filas:
+        d = dict(f)
+        d['monto'] = float(d['monto'])
+        if isinstance(d['fecha'], datetime):
+            d['fecha'] = d['fecha'].strftime('%Y-%m-%d %H:%M:%S')
+        else:
+            d['fecha'] = str(d['fecha'])
+        resultado.append(d)
+        
+    return jsonify(resultado)
 
 @app.route('/api/reiniciar-ventas', methods=['POST'])
 def reiniciar_ventas():
