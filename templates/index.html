@@ -112,6 +112,7 @@
                             <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
                                 <h6 class="fw-bold mb-0" style="color: var(--brand-navy);">🔥 Top Productos Más Vendidos</h6>
                                 <div>
+                                    <button class="btn btn-outline-primary btn-sm fw-bold me-2" onclick="revincularImagenes()">📸 Revincular Fotos de GitHub</button>
                                     <button class="btn btn-outline-success btn-sm fw-bold me-2" onclick="agregarVentaManual()">💵 + Ingresar Venta Anterior ($22)</button>
                                     <button class="btn btn-outline-danger btn-sm fw-bold" onclick="reiniciarVentas()">🔄 Reiniciar Histórico</button>
                                 </div>
@@ -135,6 +136,7 @@
                     </div>
                     <div class="modal-body">
                         <input type="hidden" name="id" id="prod-id">
+                        <input type="hidden" name="imagen_actual" id="prod-imagen-actual">
                         <div class="mb-2">
                             <label class="form-label fw-bold">Nombre del Producto</label>
                             <input type="text" class="form-control" name="nombre" id="prod-nombre" required>
@@ -154,7 +156,7 @@
                             <input type="number" class="form-control" name="stock" id="prod-stock" required>
                         </div>
                         <div class="mb-2">
-                            <label class="form-label fw-bold">Fotografía del Producto</label>
+                            <label class="form-label fw-bold">Cambiar Fotografía (Opcional)</label>
                             <input type="file" class="form-control" name="imagen" accept="image/*">
                         </div>
                     </div>
@@ -289,6 +291,14 @@
             });
         }
 
+        async function revincularImagenes() {
+            const res = await fetch('/api/revincular-imagenes', { method: 'POST' });
+            if (res.ok) {
+                alert("¡Todas las fotos de GitHub se han revinculado con éxito!");
+                cargarProductos();
+            }
+        }
+
         async function verHistorial(tipo) {
             document.getElementById('historialTitulo').innerText = tipo === 'hoy' ? '📋 Detalle de Ventas de Hoy' : '📋 Detalle de Ventas del Mes';
             const res = await fetch(`/api/historial-ventas/${tipo}`);
@@ -361,14 +371,17 @@
         function abrirModalProducto() {
             document.getElementById('formProducto').reset();
             document.getElementById('prod-id').value = '';
+            document.getElementById('prod-imagen-actual').value = '';
             document.getElementById('modalTitulo').innerText = 'Añadir Nuevo Producto';
             modalObj.show();
         }
 
         function editarProducto(id) {
+            document.getElementById('formProducto').reset();
             const p = productosData.find(prod => prod.id === id);
             if (p) {
                 document.getElementById('prod-id').value = p.id;
+                document.getElementById('prod-imagen-actual').value = p.imagen || '';
                 document.getElementById('prod-nombre').value = p.nombre;
                 document.getElementById('prod-precio').value = p.precio;
                 document.getElementById('prod-costo').value = p.costo;
