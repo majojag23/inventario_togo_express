@@ -24,13 +24,14 @@ def get_db():
         conn.row_factory = sqlite3.Row
         return conn
 
+# LISTA COMPLETA DE PRODUCTOS CON SUS NOMBRES DE IMAGEN EXACTOS DE GITHUB
 PRODUCTOS_FACTURA = [
     ("Cerveza Corona Extra (330 mL)", 2.25, 1.65, 24, "Cerveza Corona Extra (330 mL).jpg"),
     ("Cerveza Corona Extra six", 12.50, 9.90, 4, "Cerveza Corona Extra six.jpg"),
     ("Cerveza Pilsener (355 mL) u", 1.75, 1.36, 36, "Cerveza Pilsener (355 mL) u.jpg"),
     ("Cerveza Pilsener (355 mL) six", 9.75, 8.15, 6, "Cerveza Pilsener (355 mL).jpg"),
-    ("Cerveza Pilsener (473 mL) u", 2.25, 1.75, 24, "Pilsener 473 mL.jpg"),
-    ("Cerveza Pilsener (473 mL) six", 12.50, 9.90, 4, "Pilsener 473 mL six.jpg"),
+    ("Cerveza Pilsener (473 mL) u", 2.25, 1.75, 24, "pilsener (473ml)u.webp"),
+    ("Cerveza Pilsener (473 mL) six", 12.50, 9.90, 4, "cerveza pilsener (473ml) six.jpg"),
     ("Cerveza Suprema (330 mL) u", 1.85, 1.42, 18, "Cerveza Suprema (330 mL).jpg"),
     ("Cerveza Suprema six", 10.25, 8.50, 3, "SUPREMA SIX.jpg"),
     ("Coca-Cola 2.5 L", 2.95, 2.13, 6, "Coca-Cola 2.5 L.jpg"),
@@ -38,12 +39,6 @@ PRODUCTOS_FACTURA = [
     ("Coca-Cola Personal", 1.65, 1.25, 2, "Coca-Cola Personal.jpg"),
     ("Coca-Cola zero 1.25", 1.85, 1.30, 2, "Coca-Cola zero 1.25.jpg"),
     ("del valle 2.5", 1.75, 1.30, 4, "del valle 2.5.jpg"),
-    ("Rehidratante Elec", 3.10, 2.35, 1, "Rehidratante Elec.jpg"),
-    ("Smirnoff Vodka", 18.99, 12.95, 1, "smirnoff vodka.jpg"),
-    ("Ron Bacardí Blanco", 21.50, 14.60, 1, "Ron Bacardí Blanco.jpg"),
-    ("Ron Bacardí Carta Blanco Oro", 14.50, 9.40, 2, "Ron Bacardí Carta Blanco Oro.jpg"),
-    ("Ron Bacardí Oro 750 ml", 18.50, 12.35, 1, "Ron Bacardí Oro 750 ml.jpg"),
-    ("Vino Reservado Concha y Toro", 8.99, 5.95, 1, "Vino Reservado Concha y Toro.jpg"),
     ("Doritos Extra Queso", 2.15, 1.63, 2, "Doritos Extra Queso.jpg"),
     ("Doritos NACHO", 2.15, 1.63, 2, "Doritos NACHO.jpg"),
     ("Papas Lays con Sal", 2.60, 1.96, 3, "Papas Lays con Sal.jpg"),
@@ -55,14 +50,31 @@ PRODUCTOS_FACTURA = [
     ("Semillas Surtidas", 3.85, 2.95, 2, "semillas.jpg"),
     ("LECHE ENTERA", 1.95, 1.50, 2, "LECHE ENTERA.jpg"),
     ("LECHE DESLAC", 1.65, 1.25, 3, "LECHE DESLAC.jpg"),
-    ("PALETA D/YOGURT", 1.25, 0.74, 6, "PALETA D/YOGURT.jpg"),
-    ("PALETA TASTY", 1.00, 0.60, 6, "PALETA TASTY.jpg"),
+    
+    # PALETAS VINCULADAS A SUS FOTOS EN GITHUB:
+    ("paleta Nevería capuchino", 1.00, 0.60, 6, "paleta_capuchino.jpeg"),
+    ("paleta Nevería napolitano", 1.00, 0.60, 6, "paleta_napolitano.jpeg"),
+    ("paleta Nevería naranja", 1.00, 0.60, 6, "paleta_naranjo.jpeg"),
+    ("paleta Nevería neve choc", 1.00, 0.60, 6, "paleta_neve_choc.jpeg"),
+    ("paleta Nevería nevehola", 1.00, 0.60, 6, "paleta_nevehola.jpeg"),
+    ("paleta Nevería sandía", 1.00, 0.60, 6, "paleta_sandia.jpeg"),
+    ("paleta yogur choco maní", 1.00, 0.60, 6, "paleta_mani.jpeg"),
+    ("paleta yogurtt banano", 1.00, 0.60, 6, "paleta_banano.jpeg"),
+    ("paleta yogurtt fresa", 1.00, 0.60, 6, "paleta_fresa.jpeg"),
+    
     ("MALBORO GOLD", 3.75, 2.05, 10, "MALBORO GOLD.jpg"),
     ("MALBORO VISTA / FOREST", 4.50, 3.50, 10, "MALBORO VISTA.jpg"),
     ("PALLMALL", 2.50, 1.95, 10, "PALLMALL.jpg"),
     ("HIELERA NAPOLI CO", 9.99, 7.00, 1, "HIELERA NAPOLI CO.jpg"),
     ("Hielo Selectos 2", 1.60, 1.15, 2, "Hielo Selectos 2.jpg"),
-    ("ALIMENTO P/PERRO", 4.25, 3.15, 2, "ALIMENTO P/PERRO.jpg")
+    ("ALIMENTO P/PERRO", 4.25, 3.15, 2, "ALIMENTO P/PERRO.jpg"),
+    ("huevos cubeto", 6.00, 4.50, 1, "huevos cubeto.jpg"),
+    ("Rehidratante Elec", 3.10, 2.35, 1, "Rehidratante Elec.jpg"),
+    ("Smirnoff Vodka", 18.99, 12.95, 1, "smirnoff vodka.jpg"),
+    ("Ron Bacardí Blanco", 21.50, 14.60, 1, "Ron Bacardí Blanco.jpg"),
+    ("Ron Bacardí Carta Blanco Oro", 14.50, 9.40, 2, "Ron Bacardí Carta Blanco Oro.jpg"),
+    ("Ron Bacardí Oro 750 ml", 18.50, 12.35, 1, "Ron Bacardí Oro 750 ml.jpg"),
+    ("Vino Reservado Concha y Toro", 8.99, 5.95, 1, "Vino Reservado Concha y Toro.jpg")
 ]
 
 def init_db():
@@ -129,6 +141,20 @@ def init_db():
                     VALUES (?, ?, ?, ?, 0, ?)
                 '''
                 cursor.execute(q, p)
+            conn.commit()
+        else:
+            # ACTUALIZADOR AUTOMÁTICO DE RUTA DE IMÁGENES
+            for p in PRODUCTOS_FACTURA:
+                q_upd_img = '''
+                    UPDATE productos SET imagen = %s 
+                    WHERE (imagen IS NULL OR imagen = 'default.jpg' OR imagen = '') 
+                    AND (LOWER(nombre) LIKE LOWER(%s))
+                ''' if DB_URL else '''
+                    UPDATE productos SET imagen = ? 
+                    WHERE (imagen IS NULL OR imagen = 'default.jpg' OR imagen = '') 
+                    AND (LOWER(nombre) LIKE LOWER(?))
+                '''
+                cursor.execute(q_upd_img, (p[4], f"%{p[0][:10]}%"))
             conn.commit()
 
         conn.close()
@@ -415,6 +441,7 @@ def guardar_producto():
     precio = float(request.form.get('precio', 0))
     costo = float(request.form.get('costo', 0))
     stock = int(request.form.get('stock', 0))
+    imagen_actual = request.form.get('imagen_actual')
 
     imagen_file = request.files.get('imagen')
     filename = None
@@ -427,12 +454,9 @@ def guardar_producto():
     cursor = conn.cursor()
 
     if id_prod:
-        if filename:
-            q = 'UPDATE productos SET nombre=%s, precio=%s, costo=%s, stock=%s, imagen=%s WHERE id=%s' if DB_URL else 'UPDATE productos SET nombre=?, precio=?, costo=?, stock=?, imagen=? WHERE id=?'
-            cursor.execute(q, (nombre, precio, costo, stock, filename, id_prod))
-        else:
-            q = 'UPDATE productos SET nombre=%s, precio=%s, costo=%s, stock=%s WHERE id=%s' if DB_URL else 'UPDATE productos SET nombre=?, precio=?, costo=?, stock=? WHERE id=?'
-            cursor.execute(q, (nombre, precio, costo, stock, id_prod))
+        foto_final = filename if filename else (imagen_actual if imagen_actual else 'default.jpg')
+        q = 'UPDATE productos SET nombre=%s, precio=%s, costo=%s, stock=%s, imagen=%s WHERE id=%s' if DB_URL else 'UPDATE productos SET nombre=?, precio=?, costo=?, stock=?, imagen=? WHERE id=?'
+        cursor.execute(q, (nombre, precio, costo, stock, foto_final, id_prod))
     else:
         q = 'INSERT INTO productos (nombre, precio, costo, stock, imagen) VALUES (%s, %s, %s, %s, %s)' if DB_URL else 'INSERT INTO productos (nombre, precio, costo, stock, imagen) VALUES (?, ?, ?, ?, ?)'
         cursor.execute(q, (nombre, precio, costo, stock, filename or 'default.jpg'))
@@ -448,7 +472,7 @@ def uploaded_file(filename):
     if os.path.exists(filename):
         return send_from_directory('.', filename)
     base = os.path.splitext(filename)[0]
-    for ext in ['.jpg', '.png', '.jpeg', '.JPG', '.PNG', '.webp']:
+    for ext in ['.jpg', '.png', '.jpeg', '.JPG', '.PNG', '.webp', '.jpeg']:
         if os.path.exists(base + ext):
             return send_from_directory('.', base + ext)
     return send_from_directory('.', 'logo_togo_express.png')
