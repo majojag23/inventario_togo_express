@@ -29,6 +29,8 @@ PRODUCTOS_FACTURA = [
     ("Cerveza Corona Extra six", 12.50, 9.90, 4, "Cerveza Corona Extra six.jpg"),
     ("Cerveza Pilsener (355 mL) u", 1.75, 1.36, 36, "Cerveza Pilsener (355 mL) u.jpg"),
     ("Cerveza Pilsener (355 mL) six", 9.75, 8.15, 6, "Cerveza Pilsener (355 mL).jpg"),
+    ("Cerveza Pilsener (473 mL) u", 2.25, 1.75, 24, "Pilsener 473 mL.jpg"),
+    ("Cerveza Pilsener (473 mL) six", 12.50, 9.90, 4, "Pilsener 473 mL six.jpg"),
     ("Cerveza Suprema (330 mL) u", 1.85, 1.42, 18, "Cerveza Suprema (330 mL).jpg"),
     ("Cerveza Suprema six", 10.25, 8.50, 3, "SUPREMA SIX.jpg"),
     ("Coca-Cola 2.5 L", 2.95, 2.13, 6, "Coca-Cola 2.5 L.jpg"),
@@ -161,6 +163,24 @@ def get_productos():
         
     return jsonify(lista)
 
+def extraer_marca_medida(nombre):
+    nombre_low = nombre.lower()
+    medida = ""
+    if "473" in nombre_low:
+        medida = "473"
+    elif "355" in nombre_low:
+        medida = "355"
+    elif "330" in nombre_low:
+        medida = "330"
+    
+    marca = ""
+    for m in ['corona', 'pilsener', 'suprema']:
+        if m in nombre_low:
+            marca = m
+            break
+            
+    return marca, medida
+
 @app.route('/api/vender/<int:id>', methods=['POST'])
 def vender_producto(id):
     conn = get_db()
@@ -174,36 +194,39 @@ def vender_producto(id):
         nombre_prod = prod['nombre'].lower()
         precio_prod = float(prod['precio'])
         
+        # 1. Restar 1 al producto vendido
         q_upd = 'UPDATE productos SET stock = stock - 1, ventas = ventas + 1 WHERE id = %s' if DB_URL else 'UPDATE productos SET stock = stock - 1, ventas = ventas + 1 WHERE id = ?'
         cursor.execute(q_upd, (id,))
         
+        # 2. Registrar la venta
         q_hist = 'INSERT INTO historial_ventas (producto_id, monto, fecha) VALUES (%s, %s, %s)' if DB_URL else 'INSERT INTO historial_ventas (producto_id, monto, fecha) VALUES (?, ?, ?)'
         cursor.execute(q_hist, (id, precio_prod, datetime.now()))
         
         cursor.execute('SELECT * FROM productos')
         todos = [dict(p) for p in cursor.fetchall()]
         
-        if 'six' in nombre_prod:
-            marca = nombre_prod.replace('six', '').replace('(355 ml)', '').replace('(330 ml)', '').strip()
+        marca, medida = extraer_marca_medida(nombre_prod)
+        
+        if marca:
+            es_six = 'six' in nombre_prod
             for item in todos:
                 item_nombre = item['nombre'].lower()
-                if marca in item_nombre and 'six' not in item_nombre:
-                    nuevo_stock_u = max(0, int(item['stock']) - 6)
-                    q_upd_u = 'UPDATE productos SET stock = %s WHERE id = %s' if DB_URL else 'UPDATE productos SET stock = ? WHERE id = ?'
-                    cursor.execute(q_upd_u, (nuevo_stock_u, item['id']))
-                    break
-
-        elif any(m in nombre_prod for m in ['corona', 'pilsener', 'suprema']):
-            marca = 'corona' if 'corona' in nombre_prod else ('pilsener' if 'pilsener' in nombre_prod else 'suprema')
-            for item in todos:
-                item_nombre = item['nombre'].lower()
-                if marca in item_nombre and 'six' in item_nombre:
-                    stock_actual_u = int(prod['stock']) - 1
-                    possible_six = stock_actual_u // 6
-                    if int(item['stock']) > possible_six:
-                        q_upd_six = 'UPDATE productos SET stock = %s WHERE id = %s' if DB_URL else 'UPDATE productos SET stock = ? WHERE id = ?'
-                        cursor.execute(q_upd_six, (possible_six, item['id']))
-                    break
+                item_marca, item_medida = extraer_marca_medida(item_nombre)
+                
+                # Deben coincidir MARCA y MEDIDA exactas
+                if item_marca == marca and item_medida == medida:
+                    if es_six and 'six' not in item_nombre:
+                        nuevo_stock_u = max(0, int(item['stock']) - 6)
+                        q_upd_u = 'UPDATE productos SET stock = %s WHERE id = %s' if DB_URL else 'UPDATE productos SET stock = ? WHERE id = ?'
+                        cursor.execute(q_upd_u, (nuevo_stock_u, item['id']))
+                        break
+                    elif not es_six and 'six' in item_nombre:
+                        stock_actual_u = int(prod['stock']) - 1
+                        possible_six = stock_actual_u // 6
+                        if int(item['stock']) > possible_six:
+                            q_upd_six = 'UPDATE productos SET stock = %s WHERE id = %s' if DB_URL else 'UPDATE productos SET stock = ? WHERE id = ?'
+                            cursor.execute(q_upd_six, (possible_six, item['id']))
+                        break
 
         conn.commit()
         conn.close()
@@ -235,27 +258,27 @@ def devolver_producto(id):
         cursor.execute('SELECT * FROM productos')
         todos = [dict(p) for p in cursor.fetchall()]
         
-        if 'six' in nombre_prod:
-            marca = nombre_prod.replace('six', '').replace('(355 ml)', '').replace('(330 ml)', '').strip()
+        marca, medida = extraer_marca_medida(nombre_prod)
+        
+        if marca:
+            es_six = 'six' in nombre_prod
             for item in todos:
                 item_nombre = item['nombre'].lower()
-                if marca in item_nombre and 'six' not in item_nombre:
-                    nuevo_stock_u = int(item['stock']) + 6
-                    q_upd_u = 'UPDATE productos SET stock = %s WHERE id = %s' if DB_URL else 'UPDATE productos SET stock = ? WHERE id = ?'
-                    cursor.execute(q_upd_u, (nuevo_stock_u, item['id']))
-                    break
-
-        elif any(m in nombre_prod for m in ['corona', 'pilsener', 'suprema']):
-            marca = 'corona' if 'corona' in nombre_prod else ('pilsener' if 'pilsener' in nombre_prod else 'suprema')
-            for item in todos:
-                item_nombre = item['nombre'].lower()
-                if marca in item_nombre and 'six' in item_nombre:
-                    stock_actual_u = int(prod['stock']) + 1
-                    possible_six = stock_actual_u // 6
-                    if int(item['stock']) < possible_six:
-                        q_upd_six = 'UPDATE productos SET stock = %s WHERE id = %s' if DB_URL else 'UPDATE productos SET stock = ? WHERE id = ?'
-                        cursor.execute(q_upd_six, (possible_six, item['id']))
-                    break
+                item_marca, item_medida = extraer_marca_medida(item_nombre)
+                
+                if item_marca == marca and item_medida == medida:
+                    if es_six and 'six' not in item_nombre:
+                        nuevo_stock_u = int(item['stock']) + 6
+                        q_upd_u = 'UPDATE productos SET stock = %s WHERE id = %s' if DB_URL else 'UPDATE productos SET stock = ? WHERE id = ?'
+                        cursor.execute(q_upd_u, (nuevo_stock_u, item['id']))
+                        break
+                    elif not es_six and 'six' in item_nombre:
+                        stock_actual_u = int(prod['stock']) + 1
+                        possible_six = stock_actual_u // 6
+                        if int(item['stock']) < possible_six:
+                            q_upd_six = 'UPDATE productos SET stock = %s WHERE id = %s' if DB_URL else 'UPDATE productos SET stock = ? WHERE id = ?'
+                            cursor.execute(q_upd_six, (possible_six, item['id']))
+                        break
 
         conn.commit()
         conn.close()
