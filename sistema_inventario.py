@@ -24,7 +24,56 @@ def get_db():
         conn.row_factory = sqlite3.Row
         return conn
 
-# LISTA COMPLETA DE PRODUCTOS CON SUS NOMBRES DE IMAGEN EXACTOS DE GITHUB
+# MAPA EXACTO PRODUCTO -> IMAGEN EN GITHUB
+MAPA_IMAGENES = {
+    "Cerveza Corona Extra (330 mL)": "Cerveza Corona Extra (330 mL).jpg",
+    "Cerveza Corona Extra six": "Cerveza Corona Extra six.jpg",
+    "Cerveza Pilsener (355 mL) u": "Cerveza Pilsener (355 mL) u.jpg",
+    "Cerveza Pilsener (355 mL) six": "Cerveza Pilsener (355 mL).jpg",
+    "Cerveza Pilsener (473 mL) u": "pilsener (473ml)u.webp",
+    "Cerveza Pilsener (473 mL) six": "cerveza pilsener (473ml) six.jpg",
+    "Cerveza Suprema (330 mL) u": "Cerveza Suprema (330 mL).jpg",
+    "Cerveza Suprema six": "SUPREMA SIX.jpg",
+    "Coca-Cola 2.5 L": "Coca-Cola 2.5 L.jpg",
+    "Coca-Cola Litro": "Coca-Cola Litro.jpg",
+    "Coca-Cola Personal": "Coca-Cola Personal.jpg",
+    "Coca-Cola zero 1.25": "Coca-Cola zero 1.25.jpg",
+    "del valle 2.5": "del valle 2.5.jpg",
+    "Doritos Extra Queso": "Doritos Extra Queso.jpg",
+    "Doritos NACHO": "Doritos NACHO.jpg",
+    "Papas Lays con Sal": "Papas Lays con Sal.jpg",
+    "LAYS BARBACOA 80 GR": "LAYS BARBACOA 80 GR.jpg",
+    "CHURRITOS PEQUE": "CHURRITOS PEQUE.jpg",
+    "CHETOOS": "CHETOOS.jpg",
+    "NOCHOS 150": "NOCHOS 150.jpg",
+    "JALAPEÑO 150": "JALAPEÑO 150.jpg",
+    "Semillas Surtidas": "semillas.jpg",
+    "LECHE ENTERA": "LECHE ENTERA.jpg",
+    "LECHE DESLAC": "LECHE DESLAC.jpg",
+    "paleta Nevería capuchino": "paleta_capuchino.jpeg",
+    "paleta Nevería napolitano": "paleta_napolitano.jpeg",
+    "paleta Nevería naranja": "paleta_naranjo.jpeg",
+    "paleta Nevería neve choc": "paleta_neve_choc.jpeg",
+    "paleta Nevería nevehola": "paleta_nevehola.jpeg",
+    "paleta Nevería sandía": "paleta_sandia.jpeg",
+    "paleta yogur choco maní": "paleta_mani.jpeg",
+    "paleta yogurtt banano": "paleta_banano.jpeg",
+    "paleta yogurtt fresa": "paleta_fresa.jpeg",
+    "MALBORO GOLD": "MALBORO GOLD.jpg",
+    "MALBORO VISTA / FOREST": "MALBORO VISTA.jpg",
+    "PALLMALL": "PALLMALL.jpg",
+    "HIELERA NAPOLI CO": "HIELERA NAPOLI CO.jpg",
+    "Hielo Selectos 2": "Hielo Selectos 2.jpg",
+    "ALIMENTO P/PERRO": "ALIMENTO P/PERRO.jpg",
+    "huevos cubeto": "huevos cubeto.jpg",
+    "Rehidratante Elec": "Rehidratante Elec.jpg",
+    "Smirnoff Vodka": "smirnoff vodka.jpg",
+    "Ron Bacardí Blanco": "Ron Bacardí Blanco.jpg",
+    "Ron Bacardí Carta Blanco Oro": "Ron Bacardí Carta Blanco Oro.jpg",
+    "Ron Bacardí Oro 750 ml": "Ron Bacardí Oro 750 ml.jpg",
+    "Vino Reservado Concha y Toro": "Vino Reservado Concha y Toro.jpg"
+}
+
 PRODUCTOS_FACTURA = [
     ("Cerveza Corona Extra (330 mL)", 2.25, 1.65, 24, "Cerveza Corona Extra (330 mL).jpg"),
     ("Cerveza Corona Extra six", 12.50, 9.90, 4, "Cerveza Corona Extra six.jpg"),
@@ -50,8 +99,6 @@ PRODUCTOS_FACTURA = [
     ("Semillas Surtidas", 3.85, 2.95, 2, "semillas.jpg"),
     ("LECHE ENTERA", 1.95, 1.50, 2, "LECHE ENTERA.jpg"),
     ("LECHE DESLAC", 1.65, 1.25, 3, "LECHE DESLAC.jpg"),
-    
-    # PALETAS VINCULADAS A SUS FOTOS EN GITHUB:
     ("paleta Nevería capuchino", 1.00, 0.60, 6, "paleta_capuchino.jpeg"),
     ("paleta Nevería napolitano", 1.00, 0.60, 6, "paleta_napolitano.jpeg"),
     ("paleta Nevería naranja", 1.00, 0.60, 6, "paleta_naranjo.jpeg"),
@@ -61,7 +108,6 @@ PRODUCTOS_FACTURA = [
     ("paleta yogur choco maní", 1.00, 0.60, 6, "paleta_mani.jpeg"),
     ("paleta yogurtt banano", 1.00, 0.60, 6, "paleta_banano.jpeg"),
     ("paleta yogurtt fresa", 1.00, 0.60, 6, "paleta_fresa.jpeg"),
-    
     ("MALBORO GOLD", 3.75, 2.05, 10, "MALBORO GOLD.jpg"),
     ("MALBORO VISTA / FOREST", 4.50, 3.50, 10, "MALBORO VISTA.jpg"),
     ("PALLMALL", 2.50, 1.95, 10, "PALLMALL.jpg"),
@@ -142,20 +188,6 @@ def init_db():
                 '''
                 cursor.execute(q, p)
             conn.commit()
-        else:
-            # ACTUALIZADOR AUTOMÁTICO DE RUTA DE IMÁGENES
-            for p in PRODUCTOS_FACTURA:
-                q_upd_img = '''
-                    UPDATE productos SET imagen = %s 
-                    WHERE (imagen IS NULL OR imagen = 'default.jpg' OR imagen = '') 
-                    AND (LOWER(nombre) LIKE LOWER(%s))
-                ''' if DB_URL else '''
-                    UPDATE productos SET imagen = ? 
-                    WHERE (imagen IS NULL OR imagen = 'default.jpg' OR imagen = '') 
-                    AND (LOWER(nombre) LIKE LOWER(?))
-                '''
-                cursor.execute(q_upd_img, (p[4], f"%{p[0][:10]}%"))
-            conn.commit()
 
         conn.close()
     except Exception as e:
@@ -169,6 +201,17 @@ def allowed_file(filename):
 @app.route('/')
 def index():
     return render_template('index.html')
+
+@app.route('/api/revincular-imagenes', methods=['POST'])
+def revincular_imagenes():
+    conn = get_db()
+    cursor = conn.cursor()
+    for nombre_prod, img_file in MAPA_IMAGENES.items():
+        q = 'UPDATE productos SET imagen = %s WHERE LOWER(nombre) = LOWER(%s)' if DB_URL else 'UPDATE productos SET imagen = ? WHERE LOWER(nombre) = LOWER(?)'
+        cursor.execute(q, (img_file, nombre_prod))
+    conn.commit()
+    conn.close()
+    return jsonify({"success": True})
 
 @app.route('/api/productos', methods=['GET'])
 def get_productos():
@@ -454,6 +497,7 @@ def guardar_producto():
     cursor = conn.cursor()
 
     if id_prod:
+        # Se asegura de conservar la imagen propia del producto si no suben una nueva
         foto_final = filename if filename else (imagen_actual if imagen_actual else 'default.jpg')
         q = 'UPDATE productos SET nombre=%s, precio=%s, costo=%s, stock=%s, imagen=%s WHERE id=%s' if DB_URL else 'UPDATE productos SET nombre=?, precio=?, costo=?, stock=?, imagen=? WHERE id=?'
         cursor.execute(q, (nombre, precio, costo, stock, foto_final, id_prod))
