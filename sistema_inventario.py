@@ -24,7 +24,7 @@ def get_db():
         conn.row_factory = sqlite3.Row
         return conn
 
-# MAPA EXACTO DE NOMBRES EN BASE DE DATOS -> ARCHIVOS EN GITHUB
+# MAPA EXACTO Y FLEXIBLE DE NOMBRES -> ARCHIVOS
 MAPA_IMAGENES = {
     "Cerveza Corona Extra (330 mL)": "Cerveza Corona Extra (330 mL).jpg",
     "Cerveza Corona Extra six": "Cerveza Corona Extra six.jpg",
@@ -76,7 +76,8 @@ MAPA_IMAGENES = {
     "Ron Bacardí Oro 750 ml": "Ron Bacardí Oro 750 ml.jpg",
     "Ron Bacardí Oro 980 ml": "Ron Bacardí Oro 750 ml.jpg",
     "Vino Reservado Concha y Toro": "Vino Reservado Concha y Toro.jpg",
-    "Agua Alpina": "agua alpina.jpg"
+    "Agua Alpina": "agua alpina.jpg",
+    "agua": "agua alpina.jpg"
 }
 
 PRODUCTOS_FACTURA = [
@@ -126,7 +127,8 @@ PRODUCTOS_FACTURA = [
     ("Ron Bacardí Blanco", 21.50, 14.60, 1, "Ron Bacardí Blanco.jpg"),
     ("Ron Bacardí Carta Blanco Oro", 14.50, 9.40, 2, "Ron Bacardí Carta Blanco Oro.jpg"),
     ("Ron Bacardí Oro 980 ml", 21.00, 14.00, 1, "Ron Bacardí Oro 750 ml.jpg"),
-    ("Vino Reservado Concha y Toro", 8.99, 5.95, 1, "Vino Reservado Concha y Toro.jpg")
+    ("Vino Reservado Concha y Toro", 8.99, 5.95, 1, "Vino Reservado Concha y Toro.jpg"),
+    ("agua", 2.00, 1.50, 2, "agua alpina.jpg")
 ]
 
 def init_db():
@@ -212,9 +214,22 @@ def index():
 def revincular_imagenes():
     conn = get_db()
     cursor = conn.cursor()
+    
+    # 1. Aplicar mapeo directo
     for nombre_prod, img_file in MAPA_IMAGENES.items():
         q = 'UPDATE productos SET imagen = %s WHERE LOWER(nombre) = LOWER(%s)' if DB_URL else 'UPDATE productos SET imagen = ? WHERE LOWER(nombre) = LOWER(?)'
         cursor.execute(q, (img_file, nombre_prod))
+        
+    # 2. Forzar reglas especiales para los 3 díscolos
+    q_agua = "UPDATE productos SET imagen = %s WHERE LOWER(nombre) LIKE 'agua%%'" if DB_URL else "UPDATE productos SET imagen = ? WHERE LOWER(nombre) LIKE 'agua%%'"
+    cursor.execute(q_agua, ("agua alpina.jpg",))
+
+    q_coca = "UPDATE productos SET imagen = %s WHERE LOWER(nombre) LIKE '%%coca%%1.25%%' AND (LOWER(nombre) NOT LIKE '%%zero%%')" if DB_URL else "UPDATE productos SET imagen = ? WHERE LOWER(nombre) LIKE '%%coca%%1.25%%' AND (LOWER(nombre) NOT LIKE '%%zero%%')"
+    cursor.execute(q_coca, ("coca cola 1.25.jpg",))
+
+    q_pilsener = "UPDATE productos SET imagen = %s WHERE LOWER(nombre) LIKE '%%pilsener%%473%%' AND (LOWER(nombre) NOT LIKE '%%six%%' AND LOWER(nombre) NOT LIKE '%%paq%%')" if DB_URL else "UPDATE productos SET imagen = ? WHERE LOWER(nombre) LIKE '%%pilsener%%473%%' AND (LOWER(nombre) NOT LIKE '%%six%%' AND LOWER(nombre) NOT LIKE '%%paq%%')"
+    cursor.execute(q_pilsener, ("pilsener (473ml)u.webp",))
+
     conn.commit()
     conn.close()
     return jsonify({"success": True})
