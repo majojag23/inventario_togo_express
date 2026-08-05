@@ -24,20 +24,23 @@ def get_db():
         conn.row_factory = sqlite3.Row
         return conn
 
-# MAPA EXACTO PRODUCTO -> IMAGEN EN GITHUB
+# MAPA EXACTO DE NOMBRES EN BASE DE DATOS -> ARCHIVOS EN GITHUB
 MAPA_IMAGENES = {
     "Cerveza Corona Extra (330 mL)": "Cerveza Corona Extra (330 mL).jpg",
     "Cerveza Corona Extra six": "Cerveza Corona Extra six.jpg",
     "Cerveza Pilsener (355 mL) u": "Cerveza Pilsener (355 mL) u.jpg",
     "Cerveza Pilsener (355 mL) six": "Cerveza Pilsener (355 mL).jpg",
+    "Cerveza Pilsener (473ml)": "pilsener (473ml)u.webp",
     "Cerveza Pilsener (473 mL) u": "pilsener (473ml)u.webp",
     "Cerveza Pilsener (473 mL) six": "cerveza pilsener (473ml) six.jpg",
+    "Cerveza Pilsener (473 mL) six paq": "cerveza pilsener (473ml) six.jpg",
     "Cerveza Suprema (330 mL) u": "Cerveza Suprema (330 mL).jpg",
     "Cerveza Suprema six": "SUPREMA SIX.jpg",
     "Coca-Cola 2.5 L": "Coca-Cola 2.5 L.jpg",
     "Coca-Cola Litro": "Coca-Cola Litro.jpg",
     "Coca-Cola Personal": "Coca-Cola Personal.jpg",
     "Coca-Cola zero 1.25": "Coca-Cola zero 1.25.jpg",
+    "Coca-Cola 1.25": "coca cola 1.25.jpg",
     "del valle 2.5": "del valle 2.5.jpg",
     "Doritos Extra Queso": "Doritos Extra Queso.jpg",
     "Doritos NACHO": "Doritos NACHO.jpg",
@@ -65,13 +68,15 @@ MAPA_IMAGENES = {
     "HIELERA NAPOLI CO": "HIELERA NAPOLI CO.jpg",
     "Hielo Selectos 2": "Hielo Selectos 2.jpg",
     "ALIMENTO P/PERRO": "ALIMENTO P/PERRO.jpg",
-    "huevos cubeto": "huevos cubeto.jpg",
+    "huevos cubeta": "huevos cubeta.jpg",
     "Rehidratante Elec": "Rehidratante Elec.jpg",
     "Smirnoff Vodka": "smirnoff vodka.jpg",
     "Ron Bacardí Blanco": "Ron Bacardí Blanco.jpg",
     "Ron Bacardí Carta Blanco Oro": "Ron Bacardí Carta Blanco Oro.jpg",
     "Ron Bacardí Oro 750 ml": "Ron Bacardí Oro 750 ml.jpg",
-    "Vino Reservado Concha y Toro": "Vino Reservado Concha y Toro.jpg"
+    "Ron Bacardí Oro 980 ml": "Ron Bacardí Oro 750 ml.jpg",
+    "Vino Reservado Concha y Toro": "Vino Reservado Concha y Toro.jpg",
+    "Agua Alpina": "agua alpina.jpg"
 }
 
 PRODUCTOS_FACTURA = [
@@ -79,14 +84,15 @@ PRODUCTOS_FACTURA = [
     ("Cerveza Corona Extra six", 12.50, 9.90, 4, "Cerveza Corona Extra six.jpg"),
     ("Cerveza Pilsener (355 mL) u", 1.75, 1.36, 36, "Cerveza Pilsener (355 mL) u.jpg"),
     ("Cerveza Pilsener (355 mL) six", 9.75, 8.15, 6, "Cerveza Pilsener (355 mL).jpg"),
-    ("Cerveza Pilsener (473 mL) u", 2.25, 1.75, 24, "pilsener (473ml)u.webp"),
-    ("Cerveza Pilsener (473 mL) six", 12.50, 9.90, 4, "cerveza pilsener (473ml) six.jpg"),
+    ("Cerveza Pilsener (473ml)", 2.50, 1.75, 13, "pilsener (473ml)u.webp"),
+    ("Cerveza Pilsener (473 mL) six paq", 14.00, 9.90, 2, "cerveza pilsener (473ml) six.jpg"),
     ("Cerveza Suprema (330 mL) u", 1.85, 1.42, 18, "Cerveza Suprema (330 mL).jpg"),
     ("Cerveza Suprema six", 10.25, 8.50, 3, "SUPREMA SIX.jpg"),
     ("Coca-Cola 2.5 L", 2.95, 2.13, 6, "Coca-Cola 2.5 L.jpg"),
     ("Coca-Cola Litro", 1.75, 1.30, 6, "Coca-Cola Litro.jpg"),
     ("Coca-Cola Personal", 1.65, 1.25, 2, "Coca-Cola Personal.jpg"),
     ("Coca-Cola zero 1.25", 1.85, 1.30, 2, "Coca-Cola zero 1.25.jpg"),
+    ("Coca-Cola 1.25", 2.10, 1.50, 6, "coca cola 1.25.jpg"),
     ("del valle 2.5", 1.75, 1.30, 4, "del valle 2.5.jpg"),
     ("Doritos Extra Queso", 2.15, 1.63, 2, "Doritos Extra Queso.jpg"),
     ("Doritos NACHO", 2.15, 1.63, 2, "Doritos NACHO.jpg"),
@@ -114,12 +120,12 @@ PRODUCTOS_FACTURA = [
     ("HIELERA NAPOLI CO", 9.99, 7.00, 1, "HIELERA NAPOLI CO.jpg"),
     ("Hielo Selectos 2", 1.60, 1.15, 2, "Hielo Selectos 2.jpg"),
     ("ALIMENTO P/PERRO", 4.25, 3.15, 2, "ALIMENTO P/PERRO.jpg"),
-    ("huevos cubeto", 6.00, 4.50, 1, "huevos cubeto.jpg"),
+    ("huevos cubeta", 6.00, 4.50, 1, "huevos cubeta.jpg"),
     ("Rehidratante Elec", 3.10, 2.35, 1, "Rehidratante Elec.jpg"),
     ("Smirnoff Vodka", 18.99, 12.95, 1, "smirnoff vodka.jpg"),
     ("Ron Bacardí Blanco", 21.50, 14.60, 1, "Ron Bacardí Blanco.jpg"),
     ("Ron Bacardí Carta Blanco Oro", 14.50, 9.40, 2, "Ron Bacardí Carta Blanco Oro.jpg"),
-    ("Ron Bacardí Oro 750 ml", 18.50, 12.35, 1, "Ron Bacardí Oro 750 ml.jpg"),
+    ("Ron Bacardí Oro 980 ml", 21.00, 14.00, 1, "Ron Bacardí Oro 750 ml.jpg"),
     ("Vino Reservado Concha y Toro", 8.99, 5.95, 1, "Vino Reservado Concha y Toro.jpg")
 ]
 
@@ -275,18 +281,18 @@ def vender_producto(id):
         marca, medida = extraer_marca_medida(nombre_prod)
         
         if marca:
-            es_six = 'six' in nombre_prod
+            es_six = 'six' in nombre_prod or 'paq' in nombre_prod
             for item in todos:
                 item_nombre = item['nombre'].lower()
                 item_marca, item_medida = extraer_marca_medida(item_nombre)
                 
                 if item_marca == marca and item_medida == medida:
-                    if es_six and 'six' not in item_nombre:
+                    if es_six and ('six' not in item_nombre and 'paq' not in item_nombre):
                         nuevo_stock_u = max(0, int(item['stock']) - 6)
                         q_upd_u = 'UPDATE productos SET stock = %s WHERE id = %s' if DB_URL else 'UPDATE productos SET stock = ? WHERE id = ?'
                         cursor.execute(q_upd_u, (nuevo_stock_u, item['id']))
                         break
-                    elif not es_six and 'six' in item_nombre:
+                    elif not es_six and ('six' in item_nombre or 'paq' in item_nombre):
                         stock_actual_u = int(prod['stock']) - 1
                         possible_six = stock_actual_u // 6
                         if int(item['stock']) > possible_six:
@@ -327,18 +333,18 @@ def devolver_producto(id):
         marca, medida = extraer_marca_medida(nombre_prod)
         
         if marca:
-            es_six = 'six' in nombre_prod
+            es_six = 'six' in nombre_prod or 'paq' in nombre_prod
             for item in todos:
                 item_nombre = item['nombre'].lower()
                 item_marca, item_medida = extraer_marca_medida(item_nombre)
                 
                 if item_marca == marca and item_medida == medida:
-                    if es_six and 'six' not in item_nombre:
+                    if es_six and ('six' not in item_nombre and 'paq' not in item_nombre):
                         nuevo_stock_u = int(item['stock']) + 6
                         q_upd_u = 'UPDATE productos SET stock = %s WHERE id = %s' if DB_URL else 'UPDATE productos SET stock = ? WHERE id = ?'
                         cursor.execute(q_upd_u, (nuevo_stock_u, item['id']))
                         break
-                    elif not es_six and 'six' in item_nombre:
+                    elif not es_six and ('six' in item_nombre or 'paq' in item_nombre):
                         stock_actual_u = int(prod['stock']) + 1
                         possible_six = stock_actual_u // 6
                         if int(item['stock']) < possible_six:
@@ -497,7 +503,6 @@ def guardar_producto():
     cursor = conn.cursor()
 
     if id_prod:
-        # Se asegura de conservar la imagen propia del producto si no suben una nueva
         foto_final = filename if filename else (imagen_actual if imagen_actual else 'default.jpg')
         q = 'UPDATE productos SET nombre=%s, precio=%s, costo=%s, stock=%s, imagen=%s WHERE id=%s' if DB_URL else 'UPDATE productos SET nombre=?, precio=?, costo=?, stock=?, imagen=? WHERE id=?'
         cursor.execute(q, (nombre, precio, costo, stock, foto_final, id_prod))
@@ -516,7 +521,7 @@ def uploaded_file(filename):
     if os.path.exists(filename):
         return send_from_directory('.', filename)
     base = os.path.splitext(filename)[0]
-    for ext in ['.jpg', '.png', '.jpeg', '.JPG', '.PNG', '.webp', '.jpeg']:
+    for ext in ['.jpg', '.png', '.jpeg', '.JPG', '.PNG', '.webp']:
         if os.path.exists(base + ext):
             return send_from_directory('.', base + ext)
     return send_from_directory('.', 'logo_togo_express.png')
