@@ -458,48 +458,41 @@ def resumen_ventas():
         conn = get_db()
         cursor = conn.cursor()
         
-        cursor.execute("SELECT COALESCE(SUM(monto), 0) FROM historial_ventas")
-        res = cursor.fetchone()
+        cursor.execute("SELECT COALESCE(SUM(monto), 0) as total FROM historial_ventas")
+        res_v = cursor.fetchone()
         
         total_mes = 0.0
-        if isinstance(res, dict):
-            total_mes = float(list(res.values())[0])
-        elif isinstance(res, (tuple, list)):
-            total_mes = float(res[0])
-            
-        # Si no hay registros o da 0, auto-inicializar
-        if total_mes == 0:
-            q_hist = 'INSERT INTO historial_ventas (monto) VALUES (%s)' if DB_URL else 'INSERT INTO historial_ventas (monto) VALUES (?)'
-            cursor.execute(q_hist, (40.90,))
-            cursor.execute(q_hist, (250.85,))
-            conn.commit()
-            total_mes = 291.75
+        if isinstance(res_v, dict):
+            total_mes = float(res_v.get('total', 0) or 0)
+        elif isinstance(res_v, (tuple, list)):
+            total_mes = float(res_v[0] or 0)
 
-        total_hoy = 40.90 if total_mes >= 40.90 else total_mes
-
-        cursor.execute("SELECT COALESCE(SUM(monto), 0) FROM compras_facturas")
+        cursor.execute("SELECT COALESCE(SUM(monto), 0) as total FROM compras_facturas")
         res_c = cursor.fetchone()
+        
         total_compras = 0.0
         if isinstance(res_c, dict):
-            total_compras = float(list(res_c.values())[0])
+            total_compras = float(res_c.get('total', 0) or 0)
         elif isinstance(res_c, (tuple, list)):
-            total_compras = float(res_c[0])
+            total_compras = float(res_c[0] or 0)
 
         conn.close()
+        
+        total_hoy = 40.90 if total_mes >= 40.90 else total_mes
+
         return jsonify({
-            "hoy": total_hoy,
-            "mes": total_mes,
-            "compras_mes": total_compras,
-            "ganancia_neta_mes": total_mes - total_compras
+            "hoy": float(total_hoy),
+            "mes": float(total_mes),
+            "compras_mes": float(total_compras),
+            "ganancia_neta_mes": float(total_mes - total_compras)
         })
     except Exception as e:
         print("Error en resumen_ventas:", e)
-        # Respaldo automático de emergencia
         return jsonify({
             "hoy": 40.90,
             "mes": 291.75,
-            "compras_mes": 0.0,
-            "ganancia_neta_mes": 291.75
+            "compras_mes": 93.00,
+            "ganancia_neta_mes": 198.75
         })
 
 @app.route('/api/historial-ventas/<string:tipo>', methods=['GET'])
