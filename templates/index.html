@@ -106,19 +106,19 @@
                     </div>
                     <div class="col-6 col-md-3">
                         <div class="card border-0 shadow-sm p-3 text-center text-white rounded-4" style="background-color: #8b5cf6;">
-                            <h6 class="text-uppercase font-bold" style="font-size: 0.75rem;">📈 Ganancia Real (Mes)</h6>
+                            <h6 class="text-uppercase font-bold" style="font-size: 0.75rem;">📈 Ganancia Real Líquida</h6>
                             <h3 id="metric-ganancia-real" class="fw-bold mb-0">$82.00</h3>
                         </div>
                     </div>
                     <div class="col-6 col-md-3">
                         <div class="card border-0 shadow-sm p-3 text-center text-white rounded-4" style="background-color: #0d9488;">
-                            <h6 class="text-uppercase font-bold" style="font-size: 0.75rem;">📦 Capital p/ Reinvertir</h6>
-                            <h3 id="metric-capital" class="fw-bold mb-0">$209.75</h3>
+                            <h6 class="text-uppercase font-bold" style="font-size: 0.75rem;">📦 Capital Libre p/ Reinvertir</h6>
+                            <h3 id="metric-capital" class="fw-bold mb-0">$116.75</h3>
                         </div>
                     </div>
-                    <div class="col-12 col-md-6">
+                    <div class="col-12">
                         <div class="card border-0 shadow-sm p-3 text-center text-white rounded-4 metric-card-clickable" style="background-color: #f59e0b;" onclick="verHistorialCompras()">
-                            <h6 class="text-uppercase font-bold" style="font-size: 0.8rem;">🧾 Facturas y Compras a Proveedores (Mes)</h6>
+                            <h6 class="text-uppercase font-bold" style="font-size: 0.85rem;">🧾 Facturas y Compras a Proveedores (Mes)</h6>
                             <h3 id="metric-compras" class="fw-bold mb-0">$93.00</h3>
                         </div>
                     </div>
@@ -310,7 +310,7 @@
                     document.getElementById('metric-mes').innerText = `$${parseFloat(d.mes || 291.75).toFixed(2)}`;
                     document.getElementById('metric-compras').innerText = `$${parseFloat(d.compras_mes || 93.00).toFixed(2)}`;
                     document.getElementById('metric-ganancia-real').innerText = `$${parseFloat(d.ganancia_real || 82.00).toFixed(2)}`;
-                    document.getElementById('metric-capital').innerText = `$${parseFloat(d.capital_reinversion || 209.75).toFixed(2)}`;
+                    document.getElementById('metric-capital').innerText = `$${parseFloat(d.capital_reinversion || 116.75).toFixed(2)}`;
                 }
             } catch(e) {}
         }
