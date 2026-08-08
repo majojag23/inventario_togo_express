@@ -29,6 +29,8 @@
         .price-text { color: var(--brand-navy); font-weight: 800; }
         .metric-card-clickable { cursor: pointer; transition: transform 0.2s ease; }
         .metric-card-clickable:hover { transform: scale(1.03); }
+        .search-box { border-radius: 12px; border: 2px solid #cbd5e1; font-weight: 600; padding: 10px 16px; }
+        .search-box:focus { border-color: var(--brand-ice); box-shadow: 0 0 10px rgba(0, 168, 255, 0.2); }
     </style>
 </head>
 <body class="pb-5">
@@ -41,10 +43,20 @@
                 <span class="header-slogan d-block text-uppercase">SIEMPRE FRÍO, SIEMPRE LISTO ❄️</span>
             </div>
         </div>
-        <button class="btn btn-brand-red btn-sm px-3 py-2" onclick="abrirModalProducto()">+ Nuevo Producto</button>
+        <div>
+            <button class="btn btn-outline-light btn-sm fw-bold me-2 px-3 py-2" onclick="abrirModalCompra()">🧾 + Registrar Factura Compra</button>
+            <button class="btn btn-brand-red btn-sm px-3 py-2" onclick="abrirModalProducto()">+ Nuevo Producto</button>
+        </div>
     </nav>
 
     <div class="container my-3">
+        <!-- BARRA DE BÚSQUEDA RÁPIDA DE PRODUCTOS -->
+        <div class="row mb-3">
+            <div class="col-12">
+                <input type="text" id="inputBuscador" class="form-control search-box shadow-sm" placeholder="🔍 Buscar producto por nombre o marca (Ej: Pilsener, Coca-Cola, Doritos, Paleta)..." onkeyup="filtrarProductos()">
+            </div>
+        </div>
+
         <ul class="nav nav-pills nav-justified bg-white p-2 rounded-4 shadow-sm mb-3" id="pills-tab">
             <li class="nav-item">
                 <button class="nav-link active fw-bold" id="tab-ventas" data-bs-toggle="pill" data-bs-target="#content-ventas">🛒 Ventas</button>
@@ -53,7 +65,7 @@
                 <button class="nav-link fw-bold" id="tab-tabla" data-bs-toggle="pill" data-bs-target="#content-tabla">📋 Inventario</button>
             </li>
             <li class="nav-item">
-                <button class="nav-link fw-bold" id="tab-metricas" data-bs-toggle="pill" data-bs-target="#content-metricas">📊 Métricas</button>
+                <button class="nav-link fw-bold" id="tab-metricas" data-bs-toggle="pill" data-bs-target="#content-metricas">📊 Métricas y Ganancias</button>
             </li>
         </ul>
 
@@ -96,15 +108,15 @@
                         </div>
                     </div>
                     <div class="col-6 col-md-3">
-                        <div class="card border-0 shadow-sm p-3 text-center text-white rounded-4" style="background-color: var(--brand-navy);">
-                            <h6 class="text-uppercase font-bold" style="font-size: 0.75rem;">💰 Valor Inv. Actual</h6>
-                            <h3 id="metric-valor" class="fw-bold mb-0">$0.00</h3>
+                        <div class="card border-0 shadow-sm p-3 text-center text-white rounded-4 metric-card-clickable" style="background-color: #f59e0b;" onclick="verHistorialCompras()">
+                            <h6 class="text-uppercase font-bold" style="font-size: 0.75rem;">🧾 Compras/Facturas Mes (Ver 🔍)</h6>
+                            <h3 id="metric-compras" class="fw-bold mb-0">$0.00</h3>
                         </div>
                     </div>
                     <div class="col-6 col-md-3">
                         <div class="card border-0 shadow-sm p-3 text-center text-white rounded-4" style="background-color: #8b5cf6;">
-                            <h6 class="text-uppercase font-bold" style="font-size: 0.75rem;">📈 Ganancia Est.</h6>
-                            <h3 id="metric-ganancia" class="fw-bold mb-0">$0.00</h3>
+                            <h6 class="text-uppercase font-bold" style="font-size: 0.75rem;">💵 Ganancia Neta Real (Mes)</h6>
+                            <h3 id="metric-ganancia-neta" class="fw-bold mb-0">$0.00</h3>
                         </div>
                     </div>
                     <div class="col-12">
@@ -113,7 +125,6 @@
                                 <h6 class="fw-bold mb-0" style="color: var(--brand-navy);">🔥 Top Productos Más Vendidos</h6>
                                 <div>
                                     <button class="btn btn-outline-primary btn-sm fw-bold me-2" onclick="revincularImagenes()">📸 Revincular Fotos de GitHub</button>
-                                    <button class="btn btn-outline-success btn-sm fw-bold me-2" onclick="agregarVentaManual()">💵 + Ingresar Venta Anterior ($22)</button>
                                     <button class="btn btn-outline-danger btn-sm fw-bold" onclick="reiniciarVentas()">🔄 Reiniciar Histórico</button>
                                 </div>
                             </div>
@@ -169,12 +180,40 @@
         </div>
     </div>
 
-    <!-- Modal Historial Ventas -->
+    <!-- Modal Registrar Compra / Factura -->
+    <div class="modal fade" id="modalCompra" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 border-0">
+                <form id="formCompra">
+                    <div class="modal-header text-white" style="background-color: #f59e0b;">
+                        <h5 class="modal-title fw-bold">🧾 Registrar Factura o Compra</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Proveedor / Concepto de Compra</label>
+                            <input type="text" class="form-control" id="compra-concepto" placeholder="Ej: Factura Constancia, Productos Holanda, etc." required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Monto Total de Factura ($)</label>
+                            <input type="number" step="0.01" class="form-control" id="compra-monto" placeholder="0.00" required>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-warning text-white fw-bold">Guardar Factura</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Historial Ventas/Compras -->
     <div class="modal fade" id="modalHistorial" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content rounded-4 border-0">
                 <div class="modal-header text-white" style="background-color: var(--brand-navy);">
-                    <h5 class="modal-title fw-bold" id="historialTitulo">Histórico de Ventas</h5>
+                    <h5 class="modal-title fw-bold" id="historialTitulo">Histórico</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
@@ -183,7 +222,7 @@
                             <thead class="table-dark">
                                 <tr>
                                     <th>Fecha y Hora</th>
-                                    <th>Producto</th>
+                                    <th>Detalle / Concepto</th>
                                     <th class="text-end">Monto</th>
                                 </tr>
                             </thead>
@@ -200,20 +239,31 @@
         let productosData = [];
         let chartInstance = null;
         const modalObj = new bootstrap.Modal(document.getElementById('modalProducto'));
+        const modalCompraObj = new bootstrap.Modal(document.getElementById('modalCompra'));
         const modalHistorialObj = new bootstrap.Modal(document.getElementById('modalHistorial'));
 
         async function cargarProductos() {
             const res = await fetch('/api/productos');
             productosData = await res.json();
-            renderVentas();
-            renderTabla();
+            filtrarProductos();
             renderMetricas();
         }
 
-        function renderVentas() {
+        function filtrarProductos() {
+            const query = document.getElementById('inputBuscador').value.toLowerCase().strip ? document.getElementById('inputBuscador').value.toLowerCase().strip() : document.getElementById('inputBuscador').value.toLowerCase().trim();
+            const prodsFiltrados = productosData.filter(p => p.nombre.toLowerCase().includes(query));
+            renderVentas(prodsFiltrados);
+            renderTabla(prodsFiltrados);
+        }
+
+        function renderVentas(lista) {
             const grid = document.getElementById('grid-productos');
             grid.innerHTML = '';
-            productosData.forEach(p => {
+            if (lista.length === 0) {
+                grid.innerHTML = '<div class="col-12 text-center text-muted my-4">No se encontraron productos con esa búsqueda.</div>';
+                return;
+            }
+            lista.forEach(p => {
                 const bgStock = p.stock === 0 ? 'bg-danger text-white' : (p.stock <= 3 ? 'bg-warning text-dark' : 'bg-light text-dark border');
                 grid.innerHTML += `
                     <div class="col-6 col-sm-4 col-md-3">
@@ -236,10 +286,14 @@
             });
         }
 
-        function renderTabla() {
+        function renderTabla(lista) {
             const tbody = document.getElementById('tbody-inventario');
             tbody.innerHTML = '';
-            productosData.forEach(p => {
+            if (lista.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No hay resultados.</td></tr>';
+                return;
+            }
+            lista.forEach(p => {
                 tbody.innerHTML += `
                     <tr>
                         <td class="fw-bold">${p.nombre}</td>
@@ -256,20 +310,27 @@
         }
 
         async function renderMetricas() {
-            let totalVal = 0, totalGanancia = 0;
+            let totalVal = 0;
             productosData.forEach(p => {
                 totalVal += p.stock * p.precio;
-                totalGanancia += p.ventas * (p.precio - p.costo);
             });
 
             document.getElementById('metric-valor').innerText = `$${totalVal.toFixed(2)}`;
-            document.getElementById('metric-ganancia').innerText = `$${totalGanancia.toFixed(2)}`;
 
             const resResumen = await fetch('/api/resumen-ventas');
             if (resResumen.ok) {
                 const dataResumen = await resResumen.json();
                 document.getElementById('metric-hoy').innerText = `$${dataResumen.hoy.toFixed(2)}`;
                 document.getElementById('metric-mes').innerText = `$${dataResumen.mes.toFixed(2)}`;
+                document.getElementById('metric-compras').innerText = `$${dataResumen.compras_mes.toFixed(2)}`;
+                
+                const gananciaElem = document.getElementById('metric-ganancia-neta');
+                gananciaElem.innerText = `$${dataResumen.ganancia_neta_mes.toFixed(2)}`;
+                if (dataResumen.ganancia_neta_mes < 0) {
+                    gananciaElem.style.color = '#ef4444';
+                } else {
+                    gananciaElem.style.color = '#ffffff';
+                }
             }
 
             const topSellers = [...productosData].sort((a,b) => b.ventas - a.ventas).slice(0, 5);
@@ -326,9 +387,39 @@
             }
         }
 
+        async function verHistorialCompras() {
+            document.getElementById('historialTitulo').innerText = '🧾 Detalle de Facturas y Compras del Mes';
+            const res = await fetch('/api/historial-compras');
+            if (res.ok) {
+                const lista = await res.json();
+                const tbody = document.getElementById('tbody-historial');
+                tbody.innerHTML = '';
+                if (lista.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">No hay facturas registradas.</td></tr>';
+                } else {
+                    lista.forEach(item => {
+                        tbody.innerHTML += `
+                            <tr>
+                                <td><small class="text-muted">${item.fecha}</small></td>
+                                <td class="fw-bold text-primary">${item.concepto}</td>
+                                <td class="text-end fw-bold text-danger">
+                                    -$${item.monto.toFixed(2)}
+                                </td>
+                            </tr>
+                        `;
+                    });
+                }
+                modalHistorialObj.show();
+            }
+        }
+
         async function vender(id) {
             const res = await fetch(`/api/vender/${id}`, { method: 'POST' });
-            if (res.ok) cargarProductos();
+            if (res.ok) {
+                cargarProductos();
+            } else {
+                alert("Ocurrió un inconveniente registrando la venta.");
+            }
         }
 
         async function devolver(id) {
@@ -336,23 +427,31 @@
             if (res.ok) cargarProductos();
         }
 
-        async function agregarVentaManual() {
-            const monto = prompt("Ingresa el monto a sumar al acumulado de hoy:", "22.00");
-            if (monto && !isNaN(monto)) {
-                const res = await fetch('/api/agregar-venta-manual', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({monto: parseFloat(monto)})
-                });
-                if (res.ok) {
-                    alert("¡Monto sumado con éxito a las ventas de hoy!");
-                    cargarProductos();
-                }
-            }
+        function abrirModalCompra() {
+            document.getElementById('formCompra').reset();
+            modalCompraObj.show();
         }
 
+        document.getElementById('formCompra').onsubmit = async (e) => {
+            e.preventDefault();
+            const concepto = document.getElementById('compra-concepto').value;
+            const monto = parseFloat(document.getElementById('compra-monto').value);
+
+            const res = await fetch('/api/agregar-compra', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({concepto: concepto, monto: monto})
+            });
+
+            if (res.ok) {
+                modalCompraObj.hide();
+                alert("¡Factura de compra registrada con éxito!");
+                cargarProductos();
+            }
+        };
+
         async function reiniciarVentas() {
-            if (confirm("¿Estás segura de reiniciar todas las ventas acumuladas y el historial contable?")) {
+            if (confirm("¿Estás segura de reiniciar todas las ventas acumuladas, facturas de compras y el historial contable?")) {
                 const res = await fetch('/api/reiniciar-ventas', { method: 'POST' });
                 if (res.ok) {
                     alert("¡Histórico de ventas e inventario reiniciado!");
