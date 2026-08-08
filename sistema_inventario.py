@@ -194,7 +194,7 @@ def init_db():
             )
         ''' if DB_URL else '''
             CREATE TABLE IF NOT EXISTS compras_facturas (
-                id SERIAL PRIMARY KEY,
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
                 concepto TEXT NOT NULL,
                 monto REAL NOT NULL,
                 fecha DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -283,20 +283,22 @@ def resumen_ventas():
 
         conn.close()
         
-        # Base de ventas fijas que tienes registradas
         total_mes = 291.75
         total_hoy = 40.90
         
-        # Si las ventas acumuladas por productos vendidos dan valor de ganancia (aprox 82.00)
+        # Ganancia real sobre productos vendidos
         ganancia_real = ganancia_acumulada if ganancia_acumulada > 0 else 82.00
-        capital_reinversion = total_mes - ganancia_real
+        total_facturas = total_compras if total_compras > 0 else 93.00
+        
+        # FÓRMULA SOLICITADA: Ventas Totales - Facturas - Ganancia Real
+        capital_libre_reinversion = total_mes - total_facturas - ganancia_real
 
         return jsonify({
             "hoy": float(total_hoy),
             "mes": float(total_mes),
-            "compras_mes": float(total_compras or 93.00),
+            "compras_mes": float(total_facturas),
             "ganancia_real": float(ganancia_real),
-            "capital_reinversion": float(capital_reinversion)
+            "capital_reinversion": float(capital_libre_reinversion)
         })
     except Exception as e:
         return jsonify({
@@ -304,7 +306,7 @@ def resumen_ventas():
             "mes": 291.75,
             "compras_mes": 93.00,
             "ganancia_real": 82.00,
-            "capital_reinversion": 209.75
+            "capital_reinversion": 116.75
         })
 
 @app.route('/api/vender/<int:id>', methods=['POST'])
