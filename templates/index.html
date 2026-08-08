@@ -50,7 +50,6 @@
     </nav>
 
     <div class="container my-3">
-        <!-- BARRA DE BÚSQUEDA RÁPIDA DE PRODUCTOS -->
         <div class="row mb-3">
             <div class="col-12">
                 <input type="text" id="inputBuscador" class="form-control search-box shadow-sm" placeholder="🔍 Buscar producto por nombre o marca (Ej: Pilsener, Coca-Cola, Doritos, Paleta)..." onkeyup="filtrarProductos()">
@@ -124,6 +123,7 @@
                             <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
                                 <h6 class="fw-bold mb-0" style="color: var(--brand-navy);">🔥 Top Productos Más Vendidos</h6>
                                 <div>
+                                    <button class="btn btn-success btn-sm fw-bold me-2" onclick="restablecerDatosExactos()">💵 Restablecer Ventas ($40.90 Hoy / $291.75 Mes)</button>
                                     <button class="btn btn-outline-primary btn-sm fw-bold me-2" onclick="revincularImagenes()">📸 Revincular Fotos de GitHub</button>
                                     <button class="btn btn-outline-danger btn-sm fw-bold" onclick="reiniciarVentas()">🔄 Reiniciar Histórico</button>
                                 </div>
@@ -250,7 +250,7 @@
         }
 
         function filtrarProductos() {
-            const query = document.getElementById('inputBuscador').value.toLowerCase().strip ? document.getElementById('inputBuscador').value.toLowerCase().strip() : document.getElementById('inputBuscador').value.toLowerCase().trim();
+            const query = document.getElementById('inputBuscador').value.toLowerCase().trim();
             const prodsFiltrados = productosData.filter(p => p.nombre.toLowerCase().includes(query));
             renderVentas(prodsFiltrados);
             renderTabla(prodsFiltrados);
@@ -350,6 +350,14 @@
                 },
                 options: { responsive: true, plugins: { legend: { display: false } } }
             });
+        }
+
+        async function restablecerDatosExactos() {
+            const res = await fetch('/api/restablecer-datos-exactos', { method: 'POST' });
+            if (res.ok) {
+                alert("¡Se han restablecido con éxito los $40.90 de hoy y el total del mes a $291.75!");
+                cargarProductos();
+            }
         }
 
         async function revincularImagenes() {
