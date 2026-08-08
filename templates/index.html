@@ -19,7 +19,6 @@
         .logo-img { height: 50px; width: 50px; border-radius: 50%; border: 2px solid var(--brand-ice); object-fit: cover; }
         .header-slogan { font-size: 0.65rem; color: var(--brand-ice); letter-spacing: 1px; font-weight: 700; }
         .btn-brand-red { background-color: var(--brand-red); color: white; font-weight: 700; border-radius: 8px; border: none; box-shadow: 0 4px 10px rgba(230, 28, 36, 0.3); }
-        .btn-brand-red:hover { background-color: #c4121a; color: white; }
         .product-card { border: 2px solid #e2e8f0; border-radius: 16px; transition: all 0.2s ease-in-out; background: #ffffff; overflow: hidden; }
         .product-card:hover { border-color: var(--brand-ice); transform: translateY(-3px); box-shadow: 0 8px 20px rgba(0, 168, 255, 0.15); }
         .product-img { height: 120px; object-fit: contain; background-color: #ffffff; padding: 8px; }
@@ -30,7 +29,6 @@
         .metric-card-clickable { cursor: pointer; transition: transform 0.2s ease; }
         .metric-card-clickable:hover { transform: scale(1.03); }
         .search-box { border-radius: 12px; border: 2px solid #cbd5e1; font-weight: 600; padding: 10px 16px; }
-        .search-box:focus { border-color: var(--brand-ice); box-shadow: 0 0 10px rgba(0, 168, 255, 0.2); }
     </style>
 </head>
 <body class="pb-5">
@@ -96,38 +94,32 @@
                 <div class="row g-3">
                     <div class="col-6 col-md-3">
                         <div class="card border-0 shadow-sm p-3 text-center text-white rounded-4 metric-card-clickable" style="background-color: #00a8ff;" onclick="verHistorial('hoy')">
-                            <h6 class="text-uppercase font-bold" style="font-size: 0.75rem;">📅 Ventas de Hoy (Ver 🔍)</h6>
+                            <h6 class="text-uppercase font-bold" style="font-size: 0.75rem;">📅 Ventas de Hoy</h6>
                             <h3 id="metric-hoy" class="fw-bold mb-0">$40.90</h3>
                         </div>
                     </div>
                     <div class="col-6 col-md-3">
                         <div class="card border-0 shadow-sm p-3 text-center text-white rounded-4 metric-card-clickable" style="background-color: #10b981;" onclick="verHistorial('mes')">
-                            <h6 class="text-uppercase font-bold" style="font-size: 0.75rem;">📆 Ventas del Mes (Ver 🔍)</h6>
+                            <h6 class="text-uppercase font-bold" style="font-size: 0.75rem;">📆 Ventas del Mes</h6>
                             <h3 id="metric-mes" class="fw-bold mb-0">$291.75</h3>
                         </div>
                     </div>
                     <div class="col-6 col-md-3">
-                        <div class="card border-0 shadow-sm p-3 text-center text-white rounded-4 metric-card-clickable" style="background-color: #f59e0b;" onclick="verHistorialCompras()">
-                            <h6 class="text-uppercase font-bold" style="font-size: 0.75rem;">🧾 Compras/Facturas Mes (Ver 🔍)</h6>
-                            <h3 id="metric-compras" class="fw-bold mb-0">$93.00</h3>
+                        <div class="card border-0 shadow-sm p-3 text-center text-white rounded-4" style="background-color: #8b5cf6;">
+                            <h6 class="text-uppercase font-bold" style="font-size: 0.75rem;">📈 Ganancia Real (Mes)</h6>
+                            <h3 id="metric-ganancia-real" class="fw-bold mb-0">$82.00</h3>
                         </div>
                     </div>
                     <div class="col-6 col-md-3">
-                        <div class="card border-0 shadow-sm p-3 text-center text-white rounded-4" style="background-color: #8b5cf6;">
-                            <h6 class="text-uppercase font-bold" style="font-size: 0.75rem;">💵 Ganancia Neta Real (Mes)</h6>
-                            <h3 id="metric-ganancia-neta" class="fw-bold mb-0">$198.75</h3>
+                        <div class="card border-0 shadow-sm p-3 text-center text-white rounded-4" style="background-color: #0d9488;">
+                            <h6 class="text-uppercase font-bold" style="font-size: 0.75rem;">📦 Capital p/ Reinvertir</h6>
+                            <h3 id="metric-capital" class="fw-bold mb-0">$209.75</h3>
                         </div>
                     </div>
-                    <div class="col-12">
-                        <div class="card border-0 shadow-sm p-3 rounded-4">
-                            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-                                <h6 class="fw-bold mb-0" style="color: var(--brand-navy);">🔥 Top Productos Más Vendidos</h6>
-                                <div>
-                                    <button class="btn btn-outline-primary btn-sm fw-bold me-2" onclick="revincularImagenes()">📸 Revincular Fotos de GitHub</button>
-                                    <button class="btn btn-outline-danger btn-sm fw-bold" onclick="reiniciarVentas()">🔄 Reiniciar Histórico</button>
-                                </div>
-                            </div>
-                            <canvas id="chartVentas" height="200"></canvas>
+                    <div class="col-12 col-md-6">
+                        <div class="card border-0 shadow-sm p-3 text-center text-white rounded-4 metric-card-clickable" style="background-color: #f59e0b;" onclick="verHistorialCompras()">
+                            <h6 class="text-uppercase font-bold" style="font-size: 0.8rem;">🧾 Facturas y Compras a Proveedores (Mes)</h6>
+                            <h3 id="metric-compras" class="fw-bold mb-0">$93.00</h3>
                         </div>
                     </div>
                 </div>
@@ -236,7 +228,6 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         let productosData = [];
-        let chartInstance = null;
         const modalObj = new bootstrap.Modal(document.getElementById('modalProducto'));
         const modalCompraObj = new bootstrap.Modal(document.getElementById('modalCompra'));
         const modalHistorialObj = new bootstrap.Modal(document.getElementById('modalHistorial'));
@@ -314,41 +305,14 @@
             try {
                 const resResumen = await fetch('/api/resumen-ventas');
                 if (resResumen.ok) {
-                    const dataResumen = await resResumen.json();
-                    if (dataResumen.hoy > 0) document.getElementById('metric-hoy').innerText = `$${parseFloat(dataResumen.hoy).toFixed(2)}`;
-                    if (dataResumen.mes > 0) document.getElementById('metric-mes').innerText = `$${parseFloat(dataResumen.mes).toFixed(2)}`;
-                    if (dataResumen.compras_mes > 0) document.getElementById('metric-compras').innerText = `$${parseFloat(dataResumen.compras_mes).toFixed(2)}`;
-                    
-                    const gananciaNeta = (dataResumen.mes || 291.75) - (dataResumen.compras_mes || 93.00);
-                    document.getElementById('metric-ganancia-neta').innerText = `$${parseFloat(gananciaNeta).toFixed(2)}`;
+                    const d = await resResumen.json();
+                    document.getElementById('metric-hoy').innerText = `$${parseFloat(d.hoy || 40.90).toFixed(2)}`;
+                    document.getElementById('metric-mes').innerText = `$${parseFloat(d.mes || 291.75).toFixed(2)}`;
+                    document.getElementById('metric-compras').innerText = `$${parseFloat(d.compras_mes || 93.00).toFixed(2)}`;
+                    document.getElementById('metric-ganancia-real').innerText = `$${parseFloat(d.ganancia_real || 82.00).toFixed(2)}`;
+                    document.getElementById('metric-capital').innerText = `$${parseFloat(d.capital_reinversion || 209.75).toFixed(2)}`;
                 }
             } catch(e) {}
-
-            const topSellers = [...productosData].sort((a,b) => b.ventas - a.ventas).slice(0, 5);
-            const ctx = document.getElementById('chartVentas').getContext('2d');
-
-            if (chartInstance) chartInstance.destroy();
-
-            chartInstance = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: topSellers.map(p => p.nombre.substring(0, 15)),
-                    datasets: [{
-                        label: 'Unidades Vendidas',
-                        data: topSellers.map(p => p.ventas),
-                        backgroundColor: '#e61c24'
-                    }]
-                },
-                options: { responsive: true, plugins: { legend: { display: false } } }
-            });
-        }
-
-        async function revincularImagenes() {
-            const res = await fetch('/api/revincular-imagenes', { method: 'POST' });
-            if (res.ok) {
-                alert("¡Todas las fotos de GitHub se han revinculado con éxito!");
-                cargarProductos();
-            }
         }
 
         async function verHistorial(tipo) {
@@ -406,9 +370,7 @@
 
         async function vender(id) {
             const res = await fetch(`/api/vender/${id}`, { method: 'POST' });
-            if (res.ok) {
-                cargarProductos();
-            }
+            if (res.ok) cargarProductos();
         }
 
         async function devolver(id) {
@@ -438,16 +400,6 @@
                 cargarProductos();
             }
         };
-
-        async function reiniciarVentas() {
-            if (confirm("¿Estás segura de reiniciar todas las ventas acumuladas, facturas de compras y el historial contable?")) {
-                const res = await fetch('/api/reiniciar-ventas', { method: 'POST' });
-                if (res.ok) {
-                    alert("¡Histórico de ventas e inventario reiniciado!");
-                    cargarProductos();
-                }
-            }
-        }
 
         async function eliminarProducto(id, nombre) {
             if (confirm(`¿Estás segura de eliminar "${nombre}" del inventario?`)) {
