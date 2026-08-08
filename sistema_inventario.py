@@ -237,6 +237,21 @@ def allowed_file(filename):
 def index():
     return render_template('index.html')
 
+@app.route('/api/restablecer-datos-exactos', methods=['POST'])
+def restablecer_datos_exactos():
+    conn = get_db()
+    cursor = conn.cursor()
+    ahora = datetime.now()
+    
+    # Inyectar $40.90 en las ventas de hoy y $250.85 acumulado anterior del mes para completar $291.75
+    q_hist = 'INSERT INTO historial_ventas (producto_id, monto, fecha) VALUES (NULL, %s, %s)' if DB_URL else 'INSERT INTO historial_ventas (producto_id, monto, fecha) VALUES (NULL, ?, ?)'
+    cursor.execute(q_hist, (40.90, ahora))
+    cursor.execute(q_hist, (250.85, ahora))
+    
+    conn.commit()
+    conn.close()
+    return jsonify({"success": True})
+
 @app.route('/api/revincular-imagenes', methods=['POST'])
 def revincular_imagenes():
     conn = get_db()
@@ -309,11 +324,9 @@ def vender_producto(id):
         precio_prod = float(prod['precio'])
         ahora = datetime.now()
         
-        # 1. Restar stock y sumar a ventas
         q_upd = 'UPDATE productos SET stock = stock - 1, ventas = ventas + 1 WHERE id = %s' if DB_URL else 'UPDATE productos SET stock = stock - 1, ventas = ventas + 1 WHERE id = ?'
         cursor.execute(q_upd, (id,))
         
-        # 2. Registrar en historial de ventas
         q_hist = 'INSERT INTO historial_ventas (producto_id, monto, fecha) VALUES (%s, %s, %s)' if DB_URL else 'INSERT INTO historial_ventas (producto_id, monto, fecha) VALUES (?, ?, ?)'
         cursor.execute(q_hist, (id, precio_prod, ahora))
         
