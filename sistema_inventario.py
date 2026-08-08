@@ -24,7 +24,6 @@ def get_db():
         conn.row_factory = sqlite3.Row
         return conn
 
-# MAPA EXACTO Y FLEXIBLE DE NOMBRES -> ARCHIVOS
 MAPA_IMAGENES = {
     "Cerveza Corona Extra (330 mL)": "Cerveza Corona Extra (330 mL).jpg",
     "Cerveza Corona Extra six": "Cerveza Corona Extra six.jpg",
@@ -46,6 +45,8 @@ MAPA_IMAGENES = {
     "Doritos NACHO": "Doritos NACHO.jpg",
     "Papas Lays con Sal": "Papas Lays con Sal.jpg",
     "LAYS BARBACOA 80 GR": "LAYS BARBACOA 80 GR.jpg",
+    "Lays Flamin Hot": "lays flaming hot.jpg",
+    "Lays Flaming Hot": "lays flaming hot.jpg",
     "CHURRITOS PEQUE": "CHURRITOS PEQUE.jpg",
     "CHETOOS": "CHETOOS.jpg",
     "NOCHOS 150": "NOCHOS 150.jpg",
@@ -62,6 +63,12 @@ MAPA_IMAGENES = {
     "paleta yogur choco maní": "paleta_mani.jpeg",
     "paleta yogurtt banano": "paleta_banano.jpeg",
     "paleta yogurtt fresa": "paleta_fresa.jpeg",
+    "paleta palikakao": "paleta palikakao.jpg",
+    "Paleta Palikakao": "paleta palikakao.jpg",
+    "Maruchan carne": "Maruchan carne.jpg",
+    "Maruchan Sabor Carne": "Maruchan carne.jpg",
+    "Maruchan pollo": "Maruchan pollo.jpg",
+    "Maruchan Sabor Pollo": "Maruchan pollo.jpg",
     "MALBORO GOLD": "MALBORO GOLD.jpg",
     "MALBORO VISTA / FOREST": "MALBORO VISTA.jpg",
     "PALLMALL": "PALLMALL.jpg",
@@ -99,6 +106,7 @@ PRODUCTOS_FACTURA = [
     ("Doritos NACHO", 2.15, 1.63, 2, "Doritos NACHO.jpg"),
     ("Papas Lays con Sal", 2.60, 1.96, 3, "Papas Lays con Sal.jpg"),
     ("LAYS BARBACOA 80 GR", 2.10, 1.57, 1, "LAYS BARBACOA 80 GR.jpg"),
+    ("Lays Flamin Hot", 2.10, 1.57, 6, "lays flaming hot.jpg"),
     ("CHURRITOS PEQUE", 0.75, 0.51, 3, "CHURRITOS PEQUE.jpg"),
     ("CHETOOS", 0.75, 0.51, 3, "CHETOOS.jpg"),
     ("NOCHOS 150", 1.65, 1.20, 2, "NOCHOS 150.jpg"),
@@ -115,6 +123,9 @@ PRODUCTOS_FACTURA = [
     ("paleta yogur choco maní", 1.00, 0.60, 6, "paleta_mani.jpeg"),
     ("paleta yogurtt banano", 1.00, 0.60, 6, "paleta_banano.jpeg"),
     ("paleta yogurtt fresa", 1.00, 0.60, 6, "paleta_fresa.jpeg"),
+    ("paleta palikakao", 1.00, 0.60, 6, "paleta palikakao.jpg"),
+    ("Maruchan carne", 1.25, 0.90, 12, "Maruchan carne.jpg"),
+    ("Maruchan pollo", 1.25, 0.90, 12, "Maruchan pollo.jpg"),
     ("MALBORO GOLD", 3.75, 2.05, 10, "MALBORO GOLD.jpg"),
     ("MALBORO VISTA / FOREST", 4.50, 3.50, 10, "MALBORO VISTA.jpg"),
     ("PALLMALL", 2.50, 1.95, 10, "PALLMALL.jpg"),
@@ -174,6 +185,22 @@ def init_db():
             )
         ''')
 
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS compras_facturas (
+                id SERIAL PRIMARY KEY,
+                concepto VARCHAR(255) NOT NULL,
+                monto NUMERIC(10,2) NOT NULL,
+                fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''' if DB_URL else '''
+            CREATE TABLE IF NOT EXISTS compras_facturas (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                concepto TEXT NOT NULL,
+                monto REAL NOT NULL,
+                fecha DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+
         conn.commit()
 
         cursor.execute("SELECT COUNT(*) FROM productos")
@@ -215,20 +242,17 @@ def revincular_imagenes():
     conn = get_db()
     cursor = conn.cursor()
     
-    # 1. Aplicar mapeo directo
     for nombre_prod, img_file in MAPA_IMAGENES.items():
         q = 'UPDATE productos SET imagen = %s WHERE LOWER(nombre) = LOWER(%s)' if DB_URL else 'UPDATE productos SET imagen = ? WHERE LOWER(nombre) = LOWER(?)'
         cursor.execute(q, (img_file, nombre_prod))
         
-    # 2. Forzar reglas especiales para los 3 díscolos
-    q_agua = "UPDATE productos SET imagen = %s WHERE LOWER(nombre) LIKE 'agua%%'" if DB_URL else "UPDATE productos SET imagen = ? WHERE LOWER(nombre) LIKE 'agua%%'"
-    cursor.execute(q_agua, ("agua alpina.jpg",))
-
-    q_coca = "UPDATE productos SET imagen = %s WHERE LOWER(nombre) LIKE '%%coca%%1.25%%' AND (LOWER(nombre) NOT LIKE '%%zero%%')" if DB_URL else "UPDATE productos SET imagen = ? WHERE LOWER(nombre) LIKE '%%coca%%1.25%%' AND (LOWER(nombre) NOT LIKE '%%zero%%')"
-    cursor.execute(q_coca, ("coca cola 1.25.jpg",))
-
-    q_pilsener = "UPDATE productos SET imagen = %s WHERE LOWER(nombre) LIKE '%%pilsener%%473%%' AND (LOWER(nombre) NOT LIKE '%%six%%' AND LOWER(nombre) NOT LIKE '%%paq%%')" if DB_URL else "UPDATE productos SET imagen = ? WHERE LOWER(nombre) LIKE '%%pilsener%%473%%' AND (LOWER(nombre) NOT LIKE '%%six%%' AND LOWER(nombre) NOT LIKE '%%paq%%')"
-    cursor.execute(q_pilsener, ("pilsener (473ml)u.webp",))
+    cursor.execute("UPDATE productos SET imagen = %s WHERE LOWER(nombre) LIKE '%%agua%%'" if DB_URL else "UPDATE productos SET imagen = ? WHERE LOWER(nombre) LIKE '%%agua%%'", ("agua alpina.jpg",))
+    cursor.execute("UPDATE productos SET imagen = %s WHERE LOWER(nombre) LIKE '%%coca%%1.25%%' AND LOWER(nombre) NOT LIKE '%%zero%%'" if DB_URL else "UPDATE productos SET imagen = ? WHERE LOWER(nombre) LIKE '%%coca%%1.25%%' AND LOWER(nombre) NOT LIKE '%%zero%%'", ("coca cola 1.25.jpg",))
+    cursor.execute("UPDATE productos SET imagen = %s WHERE LOWER(nombre) LIKE '%%pilsener%%473%%' AND LOWER(nombre) NOT LIKE '%%six%%' AND LOWER(nombre) NOT LIKE '%%paq%%'" if DB_URL else "UPDATE productos SET imagen = ? WHERE LOWER(nombre) LIKE '%%pilsener%%473%%' AND LOWER(nombre) NOT LIKE '%%six%%' AND LOWER(nombre) NOT LIKE '%%paq%%'", ("pilsener (473ml)u.webp",))
+    cursor.execute("UPDATE productos SET imagen = %s WHERE LOWER(nombre) LIKE '%%maruchan%%carne%%'" if DB_URL else "UPDATE productos SET imagen = ? WHERE LOWER(nombre) LIKE '%%maruchan%%carne%%'", ("Maruchan carne.jpg",))
+    cursor.execute("UPDATE productos SET imagen = %s WHERE LOWER(nombre) LIKE '%%maruchan%%pollo%%'" if DB_URL else "UPDATE productos SET imagen = ? WHERE LOWER(nombre) LIKE '%%maruchan%%pollo%%'", ("Maruchan pollo.jpg",))
+    cursor.execute("UPDATE productos SET imagen = %s WHERE LOWER(nombre) LIKE '%%palikakao%%'" if DB_URL else "UPDATE productos SET imagen = ? WHERE LOWER(nombre) LIKE '%%palikakao%%'", ("paleta palikakao.jpg",))
+    cursor.execute("UPDATE productos SET imagen = %s WHERE LOWER(nombre) LIKE '%%flam%%'" if DB_URL else "UPDATE productos SET imagen = ? WHERE LOWER(nombre) LIKE '%%flam%%'", ("lays flaming hot.jpg",))
 
     conn.commit()
     conn.close()
@@ -283,12 +307,15 @@ def vender_producto(id):
     if prod and prod['stock'] > 0:
         nombre_prod = prod['nombre'].lower()
         precio_prod = float(prod['precio'])
+        ahora = datetime.now()
         
+        # 1. Restar stock y sumar a ventas
         q_upd = 'UPDATE productos SET stock = stock - 1, ventas = ventas + 1 WHERE id = %s' if DB_URL else 'UPDATE productos SET stock = stock - 1, ventas = ventas + 1 WHERE id = ?'
         cursor.execute(q_upd, (id,))
         
+        # 2. Registrar en historial de ventas
         q_hist = 'INSERT INTO historial_ventas (producto_id, monto, fecha) VALUES (%s, %s, %s)' if DB_URL else 'INSERT INTO historial_ventas (producto_id, monto, fecha) VALUES (?, ?, ?)'
-        cursor.execute(q_hist, (id, precio_prod, datetime.now()))
+        cursor.execute(q_hist, (id, precio_prod, ahora))
         
         cursor.execute('SELECT * FROM productos')
         todos = [dict(p) for p in cursor.fetchall()]
@@ -335,12 +362,13 @@ def devolver_producto(id):
         nombre_prod = prod['nombre'].lower()
         precio_prod = float(prod['precio'])
         nuevas_ventas = max(0, int(prod['ventas']) - 1)
+        ahora = datetime.now()
         
         q_upd = 'UPDATE productos SET stock = stock + 1, ventas = %s WHERE id = %s' if DB_URL else 'UPDATE productos SET stock = stock + 1, ventas = ? WHERE id = ?'
         cursor.execute(q_upd, (nuevas_ventas, id))
         
         q_hist = 'INSERT INTO historial_ventas (producto_id, monto, fecha) VALUES (%s, %s, %s)' if DB_URL else 'INSERT INTO historial_ventas (producto_id, monto, fecha) VALUES (?, ?, ?)'
-        cursor.execute(q_hist, (id, -precio_prod, datetime.now()))
+        cursor.execute(q_hist, (id, -precio_prod, ahora))
 
         cursor.execute('SELECT * FROM productos')
         todos = [dict(p) for p in cursor.fetchall()]
@@ -374,18 +402,39 @@ def devolver_producto(id):
     conn.close()
     return jsonify({"success": False, "message": "Producto no encontrado"}), 400
 
-@app.route('/api/agregar-venta-manual', methods=['POST'])
-def agregar_venta_manual():
-    monto = float(request.json.get('monto', 0))
+@app.route('/api/agregar-compra', methods=['POST'])
+def agregar_compra():
+    data = request.json
+    concepto = data.get('concepto', 'Compra de Factura')
+    monto = float(data.get('monto', 0))
     if monto > 0:
         conn = get_db()
         cursor = conn.cursor()
-        q_hist = 'INSERT INTO historial_ventas (producto_id, monto, fecha) VALUES (NULL, %s, %s)' if DB_URL else 'INSERT INTO historial_ventas (producto_id, monto, fecha) VALUES (NULL, ?, ?)'
-        cursor.execute(q_hist, (monto, datetime.now()))
+        q = 'INSERT INTO compras_facturas (concepto, monto, fecha) VALUES (%s, %s, %s)' if DB_URL else 'INSERT INTO compras_facturas (concepto, monto, fecha) VALUES (?, ?, ?)'
+        cursor.execute(q, (concepto, monto, datetime.now()))
         conn.commit()
         conn.close()
         return jsonify({"success": True})
     return jsonify({"success": False}), 400
+
+@app.route('/api/historial-compras', methods=['GET'])
+def historial_compras():
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM compras_facturas ORDER BY fecha DESC')
+    filas = cursor.fetchall()
+    conn.close()
+    
+    res = []
+    for f in filas:
+        d = dict(f)
+        d['monto'] = float(d['monto'])
+        if isinstance(d['fecha'], datetime):
+            d['fecha'] = d['fecha'].strftime('%Y-%m-%d %H:%M:%S')
+        else:
+            d['fecha'] = str(d['fecha'])
+        res.append(d)
+    return jsonify(res)
 
 @app.route('/api/resumen-ventas', methods=['GET'])
 def resumen_ventas():
@@ -396,21 +445,36 @@ def resumen_ventas():
     mes = datetime.now().strftime('%Y-%m')
     
     if DB_URL:
-        cursor.execute("SELECT COALESCE(SUM(monto), 0) as total FROM historial_ventas WHERE TO_CHAR(fecha, 'YYYY-MM-DD') = %s", (hoy,))
+        cursor.execute("SELECT COALESCE(SUM(monto), 0) as total FROM historial_ventas WHERE TO_CHAR(fecha AT TIME ZONE 'UTC' AT TIME ZONE 'America/El_Salvador', 'YYYY-MM-DD') = %s OR TO_CHAR(fecha, 'YYYY-MM-DD') = %s", (hoy, hoy))
     else:
         cursor.execute("SELECT COALESCE(SUM(monto), 0) as total FROM historial_ventas WHERE strftime('%Y-%m-%d', fecha) = ?", (hoy,))
     res_hoy = cursor.fetchone()
     total_hoy = float(list(res_hoy.values())[0] if isinstance(res_hoy, dict) else res_hoy[0])
     
     if DB_URL:
-        cursor.execute("SELECT COALESCE(SUM(monto), 0) as total FROM historial_ventas WHERE TO_CHAR(fecha, 'YYYY-MM') = %s", (mes,))
+        cursor.execute("SELECT COALESCE(SUM(monto), 0) as total FROM historial_ventas WHERE TO_CHAR(fecha AT TIME ZONE 'UTC' AT TIME ZONE 'America/El_Salvador', 'YYYY-MM') = %s OR TO_CHAR(fecha, 'YYYY-MM') = %s", (mes, mes))
     else:
         cursor.execute("SELECT COALESCE(SUM(monto), 0) as total FROM historial_ventas WHERE strftime('%Y-%m', fecha) = ?", (mes,))
     res_mes = cursor.fetchone()
     total_mes = float(list(res_mes.values())[0] if isinstance(res_mes, dict) else res_mes[0])
 
+    if DB_URL:
+        cursor.execute("SELECT COALESCE(SUM(monto), 0) as total FROM compras_facturas WHERE TO_CHAR(fecha AT TIME ZONE 'UTC' AT TIME ZONE 'America/El_Salvador', 'YYYY-MM') = %s OR TO_CHAR(fecha, 'YYYY-MM') = %s", (mes, mes))
+    else:
+        cursor.execute("SELECT COALESCE(SUM(monto), 0) as total FROM compras_facturas WHERE strftime('%Y-%m', fecha) = ?", (mes,))
+    res_compras_mes = cursor.fetchone()
+    total_compras_mes = float(list(res_compras_mes.values())[0] if isinstance(res_compras_mes, dict) else res_compras_mes[0])
+
     conn.close()
-    return jsonify({"hoy": total_hoy, "mes": total_mes})
+    
+    ganancia_neta_mes = total_mes - total_compras_mes
+
+    return jsonify({
+        "hoy": total_hoy,
+        "mes": total_mes,
+        "compras_mes": total_compras_mes,
+        "ganancia_neta_mes": ganancia_neta_mes
+    })
 
 @app.route('/api/historial-ventas/<string:tipo>', methods=['GET'])
 def detalle_historial(tipo):
@@ -426,7 +490,7 @@ def detalle_historial(tipo):
                    h.monto, h.fecha 
             FROM historial_ventas h 
             LEFT JOIN productos p ON h.producto_id = p.id 
-            WHERE TO_CHAR(h.fecha, 'YYYY-MM-DD') = %s 
+            WHERE TO_CHAR(h.fecha AT TIME ZONE 'UTC' AT TIME ZONE 'America/El_Salvador', 'YYYY-MM-DD') = %s OR TO_CHAR(h.fecha, 'YYYY-MM-DD') = %s
             ORDER BY h.fecha DESC
         ''' if DB_URL else '''
             SELECT h.id, COALESCE(p.nombre, 'Venta Manual / Registro Anterior') as producto, 
@@ -436,14 +500,14 @@ def detalle_historial(tipo):
             WHERE strftime('%Y-%m-%d', h.fecha) = ? 
             ORDER BY h.fecha DESC
         '''
-        cursor.execute(q, (hoy,))
+        cursor.execute(q, (hoy, hoy) if DB_URL else (hoy,))
     else:
         q = '''
             SELECT h.id, COALESCE(p.nombre, 'Venta Manual / Registro Anterior') as producto, 
                    h.monto, h.fecha 
             FROM historial_ventas h 
             LEFT JOIN productos p ON h.producto_id = p.id 
-            WHERE TO_CHAR(h.fecha, 'YYYY-MM') = %s 
+            WHERE TO_CHAR(h.fecha AT TIME ZONE 'UTC' AT TIME ZONE 'America/El_Salvador', 'YYYY-MM') = %s OR TO_CHAR(h.fecha, 'YYYY-MM') = %s
             ORDER BY h.fecha DESC
         ''' if DB_URL else '''
             SELECT h.id, COALESCE(p.nombre, 'Venta Manual / Registro Anterior') as producto, 
@@ -453,7 +517,7 @@ def detalle_historial(tipo):
             WHERE strftime('%Y-%m', h.fecha) = ? 
             ORDER BY h.fecha DESC
         '''
-        cursor.execute(q, (mes,))
+        cursor.execute(q, (mes, mes) if DB_URL else (mes,))
         
     filas = cursor.fetchall()
     conn.close()
@@ -476,6 +540,7 @@ def reiniciar_ventas():
     cursor = conn.cursor()
     cursor.execute('DELETE FROM productos')
     cursor.execute('DELETE FROM historial_ventas')
+    cursor.execute('DELETE FROM compras_facturas')
     for p in PRODUCTOS_FACTURA:
         q = '''
             INSERT INTO productos (nombre, precio, costo, stock, ventas, imagen)
