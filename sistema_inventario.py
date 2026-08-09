@@ -215,7 +215,6 @@ def init_db():
 
         conn.commit()
 
-        # Insertar valores base iniciales si no existen
         bases = [
             ('hoy', 21.10),
             ('mes', 312.85),
@@ -285,6 +284,11 @@ def actualizar_bases_manuales():
     conn = get_db()
     cursor = conn.cursor()
     
+    # IMPORTANTE: Vacía acumulados de prueba anteriores para que manden sólo tus valores
+    cursor.execute("DELETE FROM historial_ventas")
+    cursor.execute("DELETE FROM compras_facturas")
+    cursor.execute("UPDATE productos SET ventas = 0")
+    
     for clave in ['hoy', 'mes', 'facturas', 'ganancia']:
         if clave in data:
             v = float(data[clave])
@@ -301,7 +305,6 @@ def resumen_ventas():
         conn = get_db()
         cursor = conn.cursor()
         
-        # Leer valores base fijados por el usuario
         cursor.execute("SELECT clave, valor FROM bases_manuales")
         filas_b = cursor.fetchall()
         bm = {}
@@ -314,17 +317,14 @@ def resumen_ventas():
         base_facturas = bm.get('facturas', 93.00)
         base_ganancia = bm.get('ganancia', 89.00)
 
-        # Sumar ventas nuevas hechas desde el tablero
         cursor.execute("SELECT COALESCE(SUM(monto), 0) FROM historial_ventas")
         res_v = cursor.fetchone()
         ventas_nuevas = float(list(res_v.values())[0] if isinstance(res_v, dict) else res_v[0] or 0)
 
-        # Sumar compras nuevas
         cursor.execute("SELECT COALESCE(SUM(monto), 0) FROM compras_facturas")
         res_c = cursor.fetchone()
         compras_nuevas = float(list(res_c.values())[0] if isinstance(res_c, dict) else res_c[0] or 0)
 
-        # Ganancias de productos nuevos vendidos
         cursor.execute('SELECT * FROM productos')
         prods = cursor.fetchall()
         ganancia_nuevas = 0.0
