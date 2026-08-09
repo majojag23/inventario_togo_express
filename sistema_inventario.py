@@ -262,33 +262,42 @@ def resumen_ventas():
         conn = get_db()
         cursor = conn.cursor()
         
+        # 1. Sumar nuevas ventas dinámicas desde la BD
+        cursor.execute("SELECT COALESCE(SUM(monto), 0) FROM historial_ventas")
+        res_v = cursor.fetchone()
+        ventas_nuevas = 0.0
+        if isinstance(res_v, dict):
+            ventas_nuevas = float(list(res_v.values())[0] or 0)
+        elif isinstance(res_v, (tuple, list)):
+            ventas_nuevas = float(res_v[0] or 0)
+
+        # 2. Calcular ganancias dinámicas de ventas nuevas
         cursor.execute('SELECT * FROM productos')
         prods = cursor.fetchall()
-        
-        ganancia_acumulada = 0.0
+        ganancia_nuevas = 0.0
         for p in prods:
             d = dict(p)
             v = int(d.get('ventas', 0) or 0)
             precio = float(d.get('precio', 0) or 0)
             costo = float(d.get('costo', 0) or 0)
-            ganancia_acumulada += v * (precio - costo)
+            ganancia_nuevas += v * (precio - costo)
 
+        # 3. Sumar nuevas facturas registradas
         cursor.execute("SELECT COALESCE(SUM(monto), 0) FROM compras_facturas")
         res_c = cursor.fetchone()
-        total_compras = 0.0
+        compras_nuevas = 0.0
         if isinstance(res_c, dict):
-            total_compras = float(list(res_c.values())[0] or 0)
+            compras_nuevas = float(list(res_c.values())[0] or 0)
         elif isinstance(res_c, (tuple, list)):
-            total_compras = float(res_c[0] or 0)
+            compras_nuevas = float(res_c[0] or 0)
 
         conn.close()
         
-        total_mes = 291.75
-        total_hoy = 40.90
-        
-        # Ganancia real sobre productos vendidos
-        ganancia_real = ganancia_acumulada if ganancia_acumulada > 0 else 82.00
-        total_facturas = total_compras if total_compras > 0 else 93.00
+        # BASE INICIAL + COMPONENTES DINÁMICOS
+        total_hoy = 21.10 + ventas_nuevas
+        total_mes = 291.75 + ventas_nuevas
+        total_facturas = 93.00 + compras_nuevas
+        ganancia_real = 82.00 + ganancia_nuevas
         
         # FÓRMULA SOLICITADA: Ventas Totales - Facturas - Ganancia Real
         capital_libre_reinversion = total_mes - total_facturas - ganancia_real
@@ -302,7 +311,7 @@ def resumen_ventas():
         })
     except Exception as e:
         return jsonify({
-            "hoy": 40.90,
+            "hoy": 21.10,
             "mes": 291.75,
             "compras_mes": 93.00,
             "ganancia_real": 82.00,
