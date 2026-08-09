@@ -194,7 +194,7 @@ def init_db():
             )
         ''' if DB_URL else '''
             CREATE TABLE IF NOT EXISTS compras_facturas (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 concepto TEXT NOT NULL,
                 monto REAL NOT NULL,
                 fecha DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -256,13 +256,27 @@ def get_productos():
         
     return jsonify(lista)
 
+@app.route('/api/limpiar-duplicados', methods=['POST'])
+def limpiar_duplicados():
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM historial_ventas")
+        cursor.execute("DELETE FROM compras_facturas")
+        cursor.execute("UPDATE productos SET ventas = 0")
+        conn.commit()
+        conn.close()
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
 @app.route('/api/resumen-ventas', methods=['GET'])
 def resumen_ventas():
     try:
         conn = get_db()
         cursor = conn.cursor()
         
-        # 1. Ventas nuevas desde la BD
+        # Suma de ventas NUEVAS realizadas desde la app
         cursor.execute("SELECT COALESCE(SUM(monto), 0) FROM historial_ventas")
         res_v = cursor.fetchone()
         ventas_nuevas = 0.0
@@ -271,7 +285,7 @@ def resumen_ventas():
         elif isinstance(res_v, (tuple, list)):
             ventas_nuevas = float(res_v[0] or 0)
 
-        # 2. Facturas nuevas desde la BD
+        # Suma de compras NUEVAS desde la app
         cursor.execute("SELECT COALESCE(SUM(monto), 0) FROM compras_facturas")
         res_c = cursor.fetchone()
         compras_nuevas = 0.0
@@ -280,7 +294,7 @@ def resumen_ventas():
         elif isinstance(res_c, (tuple, list)):
             compras_nuevas = float(res_c[0] or 0)
 
-        # 3. Ganancias de productos nuevos
+        # Ganancias de productos nuevos vendidos
         cursor.execute('SELECT * FROM productos')
         prods = cursor.fetchall()
         ganancia_nuevas = 0.0
@@ -293,11 +307,11 @@ def resumen_ventas():
 
         conn.close()
         
-        # BASE REAL INICIAL A HORA DE HOY:
+        # DATOS FIJOS REALES + LO QUE VAYAS VENDIENDO
         total_hoy = 21.10 + ventas_nuevas
         total_mes = 312.85 + ventas_nuevas
         total_facturas = 93.00 + compras_nuevas
-        ganancia_real = 89.00 + ganancia_nuevas  # $82 anterior + $7 de hoy
+        ganancia_real = 89.00 + ganancia_nuevas
         
         capital_libre_reinversion = total_mes - total_facturas - ganancia_real
 
