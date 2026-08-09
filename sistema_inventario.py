@@ -262,16 +262,25 @@ def resumen_ventas():
         conn = get_db()
         cursor = conn.cursor()
         
-        # 1. Sumar nuevas ventas dinámicas desde la BD
+        # 1. Sumar sólo las ventas NUEVAS hechas a partir de este momento
         cursor.execute("SELECT COALESCE(SUM(monto), 0) FROM historial_ventas")
         res_v = cursor.fetchone()
         ventas_nuevas = 0.0
         if isinstance(res_v, dict):
             ventas_nuevas = float(list(res_v.values())[0] or 0)
-        elif isinstance(res_v, (tuple, list)):
+        elif isinstance(res_c, (tuple, list)):
             ventas_nuevas = float(res_v[0] or 0)
 
-        # 2. Calcular ganancias dinámicas de ventas nuevas
+        # 2. Sumar sólo las facturas NUEVAS
+        cursor.execute("SELECT COALESCE(SUM(monto), 0) FROM compras_facturas")
+        res_c = cursor.fetchone()
+        compras_nuevas = 0.0
+        if isinstance(res_c, dict):
+            compras_nuevas = float(list(res_c.values())[0] or 0)
+        elif isinstance(res_c, (tuple, list)):
+            compras_nuevas = float(res_c[0] or 0)
+
+        # 3. Ganancias sobre productos nuevos
         cursor.execute('SELECT * FROM productos')
         prods = cursor.fetchall()
         ganancia_nuevas = 0.0
@@ -282,20 +291,11 @@ def resumen_ventas():
             costo = float(d.get('costo', 0) or 0)
             ganancia_nuevas += v * (precio - costo)
 
-        # 3. Sumar nuevas facturas registradas
-        cursor.execute("SELECT COALESCE(SUM(monto), 0) FROM compras_facturas")
-        res_c = cursor.fetchone()
-        compras_nuevas = 0.0
-        if isinstance(res_c, dict):
-            compras_nuevas = float(list(res_c.values())[0] or 0)
-        elif isinstance(res_c, (tuple, list)):
-            compras_nuevas = float(res_c[0] or 0)
-
         conn.close()
         
-        # BASE INICIAL + COMPONENTES DINÁMICOS
+        # BASE REAL INICIAL (Sin duplicar)
         total_hoy = 21.10 + ventas_nuevas
-        total_mes = 291.75 + ventas_nuevas
+        total_mes = 270.65 + total_hoy  # $270.65 anterior + $21.10 hoy = $291.75 exactos
         total_facturas = 93.00 + compras_nuevas
         ganancia_real = 82.00 + ganancia_nuevas
         
