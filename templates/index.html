@@ -6,7 +6,6 @@
     <title>TOGO EXPRESS - Punto de Venta e Inventario</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800;900&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
             --brand-navy: #0b1a30;
@@ -95,34 +94,75 @@
                     <div class="col-6 col-md-3">
                         <div class="card border-0 shadow-sm p-3 text-center text-white rounded-4 metric-card-clickable" style="background-color: #00a8ff;" onclick="verHistorial('hoy')">
                             <h6 class="text-uppercase font-bold" style="font-size: 0.75rem;">📅 Ventas de Hoy</h6>
-                            <h3 id="metric-hoy" class="fw-bold mb-0">$40.90</h3>
+                            <h3 id="metric-hoy" class="fw-bold mb-0">$21.10</h3>
                         </div>
                     </div>
                     <div class="col-6 col-md-3">
                         <div class="card border-0 shadow-sm p-3 text-center text-white rounded-4 metric-card-clickable" style="background-color: #10b981;" onclick="verHistorial('mes')">
                             <h6 class="text-uppercase font-bold" style="font-size: 0.75rem;">📆 Ventas del Mes</h6>
-                            <h3 id="metric-mes" class="fw-bold mb-0">$291.75</h3>
+                            <h3 id="metric-mes" class="fw-bold mb-0">$312.85</h3>
                         </div>
                     </div>
                     <div class="col-6 col-md-3">
                         <div class="card border-0 shadow-sm p-3 text-center text-white rounded-4" style="background-color: #8b5cf6;">
                             <h6 class="text-uppercase font-bold" style="font-size: 0.75rem;">📈 Ganancia Real Líquida</h6>
-                            <h3 id="metric-ganancia-real" class="fw-bold mb-0">$82.00</h3>
+                            <h3 id="metric-ganancia-real" class="fw-bold mb-0">$89.00</h3>
                         </div>
                     </div>
                     <div class="col-6 col-md-3">
                         <div class="card border-0 shadow-sm p-3 text-center text-white rounded-4" style="background-color: #0d9488;">
                             <h6 class="text-uppercase font-bold" style="font-size: 0.75rem;">📦 Capital Libre p/ Reinvertir</h6>
-                            <h3 id="metric-capital" class="fw-bold mb-0">$116.75</h3>
+                            <h3 id="metric-capital" class="fw-bold mb-0">$130.85</h3>
                         </div>
                     </div>
                     <div class="col-12">
-                        <div class="card border-0 shadow-sm p-3 text-center text-white rounded-4 metric-card-clickable" style="background-color: #f59e0b;" onclick="verHistorialCompras()">
-                            <h6 class="text-uppercase font-bold" style="font-size: 0.85rem;">🧾 Facturas y Compras a Proveedores (Mes)</h6>
-                            <h3 id="metric-compras" class="fw-bold mb-0">$93.00</h3>
+                        <div class="card border-0 shadow-sm p-3 rounded-4">
+                            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+                                <div class="text-white metric-card-clickable p-2 rounded-3 w-100 mb-2" style="background-color: #f59e0b;" onclick="verHistorialCompras()">
+                                    <h6 class="text-uppercase font-bold mb-1" style="font-size: 0.85rem;">🧾 Facturas y Compras a Proveedores (Mes)</h6>
+                                    <h3 id="metric-compras" class="fw-bold mb-0">$93.00</h3>
+                                </div>
+                                <button class="btn btn-dark btn-sm fw-bold w-100" onclick="abrirModalBases()">⚙️ Ajustar Valores Base Manuales</button>
+                            </div>
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Ajustar Valores Base Manuales -->
+    <div class="modal fade" id="modalBases" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 border-0">
+                <form id="formBases">
+                    <div class="modal-header text-white" style="background-color: var(--brand-navy);">
+                        <h5 class="modal-title fw-bold">⚙️ Ajustar Valores Base Manuales</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-2">
+                            <label class="form-label fw-bold">Base Ventas de Hoy ($)</label>
+                            <input type="number" step="0.01" class="form-control" id="base-hoy" required>
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label fw-bold">Base Ventas del Mes ($)</label>
+                            <input type="number" step="0.01" class="form-control" id="base-mes" required>
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label fw-bold">Base Facturas / Compras ($)</label>
+                            <input type="number" step="0.01" class="form-control" id="base-facturas" required>
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label fw-bold">Base Ganancia Real ($)</label>
+                            <input type="number" step="0.01" class="form-control" id="base-ganancia" required>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary fw-bold">Guardar Bases Manuales</button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
@@ -228,9 +268,11 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         let productosData = [];
+        let datosResumen = {};
         const modalObj = new bootstrap.Modal(document.getElementById('modalProducto'));
         const modalCompraObj = new bootstrap.Modal(document.getElementById('modalCompra'));
         const modalHistorialObj = new bootstrap.Modal(document.getElementById('modalHistorial'));
+        const modalBasesObj = new bootstrap.Modal(document.getElementById('modalBases'));
 
         async function cargarProductos() {
             try {
@@ -305,15 +347,43 @@
             try {
                 const resResumen = await fetch('/api/resumen-ventas');
                 if (resResumen.ok) {
-                    const d = await resResumen.json();
-                    document.getElementById('metric-hoy').innerText = `$${parseFloat(d.hoy || 40.90).toFixed(2)}`;
-                    document.getElementById('metric-mes').innerText = `$${parseFloat(d.mes || 291.75).toFixed(2)}`;
-                    document.getElementById('metric-compras').innerText = `$${parseFloat(d.compras_mes || 93.00).toFixed(2)}`;
-                    document.getElementById('metric-ganancia-real').innerText = `$${parseFloat(d.ganancia_real || 82.00).toFixed(2)}`;
-                    document.getElementById('metric-capital').innerText = `$${parseFloat(d.capital_reinversion || 116.75).toFixed(2)}`;
+                    datosResumen = await resResumen.json();
+                    document.getElementById('metric-hoy').innerText = `$${parseFloat(datosResumen.hoy).toFixed(2)}`;
+                    document.getElementById('metric-mes').innerText = `$${parseFloat(datosResumen.mes).toFixed(2)}`;
+                    document.getElementById('metric-compras').innerText = `$${parseFloat(datosResumen.compras_mes).toFixed(2)}`;
+                    document.getElementById('metric-ganancia-real').innerText = `$${parseFloat(datosResumen.ganancia_real).toFixed(2)}`;
+                    document.getElementById('metric-capital').innerText = `$${parseFloat(datosResumen.capital_reinversion).toFixed(2)}`;
                 }
             } catch(e) {}
         }
+
+        function abrirModalBases() {
+            document.getElementById('base-hoy').value = datosResumen.base_hoy || 21.10;
+            document.getElementById('base-mes').value = datosResumen.base_mes || 312.85;
+            document.getElementById('base-facturas').value = datosResumen.base_facturas || 93.00;
+            document.getElementById('base-ganancia').value = datosResumen.base_ganancia || 89.00;
+            modalBasesObj.show();
+        }
+
+        document.getElementById('formBases').onsubmit = async (e) => {
+            e.preventDefault();
+            const hoy = parseFloat(document.getElementById('base-hoy').value);
+            const mes = parseFloat(document.getElementById('base-mes').value);
+            const facturas = parseFloat(document.getElementById('base-facturas').value);
+            const ganancia = parseFloat(document.getElementById('base-ganancia').value);
+
+            const res = await fetch('/api/actualizar-bases-manuales', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({hoy: hoy, mes: mes, facturas: facturas, ganancia: ganancia})
+            });
+
+            if (res.ok) {
+                modalBasesObj.hide();
+                alert("¡Valores base guardados con éxito!");
+                cargarProductos();
+            }
+        };
 
         async function verHistorial(tipo) {
             document.getElementById('historialTitulo').innerText = tipo === 'hoy' ? '📋 Detalle de Ventas de Hoy' : '📋 Detalle de Ventas del Mes';
