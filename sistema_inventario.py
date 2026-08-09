@@ -194,14 +194,37 @@ def init_db():
             )
         ''' if DB_URL else '''
             CREATE TABLE IF NOT EXISTS compras_facturas (
-                id SERIAL PRIMARY KEY,
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
                 concepto TEXT NOT NULL,
                 monto REAL NOT NULL,
                 fecha DATETIME DEFAULT CURRENT_TIMESTAMP
             )
         ''')
 
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS bases_manuales (
+                clave VARCHAR(50) PRIMARY KEY,
+                valor NUMERIC(10,2) NOT NULL
+            )
+        ''' if DB_URL else '''
+            CREATE TABLE IF NOT EXISTS bases_manuales (
+                clave TEXT PRIMARY KEY,
+                valor REAL NOT NULL
+            )
+        ''')
+
         conn.commit()
+
+        # Insertar valores base iniciales si no existen
+        bases = [
+            ('hoy', 21.10),
+            ('mes', 312.85),
+            ('facturas', 93.00),
+            ('ganancia', 89.00)
+        ]
+        for c, v in bases:
+            q_ins = 'INSERT INTO bases_manuales (clave, valor) VALUES (%s, %s) ON CONFLICT (clave) DO NOTHING' if DB_URL else 'INSERT OR IGNORE INTO bases_manuales (clave, valor) VALUES (?, ?)'
+            cursor.execute(q_ins, (c, v))
 
         cursor.execute("SELECT COUNT(*) FROM productos")
         res = cursor.fetchone()
@@ -256,19 +279,21 @@ def get_productos():
         
     return jsonify(lista)
 
-@app.route('/api/limpiar-duplicados', methods=['POST'])
-def limpiar_duplicados():
-    try:
-        conn = get_db()
-        cursor = conn.cursor()
-        cursor.execute("DELETE FROM historial_ventas")
-        cursor.execute("DELETE FROM compras_facturas")
-        cursor.execute("UPDATE productos SET ventas = 0")
-        conn.commit()
-        conn.close()
-        return jsonify({"success": True})
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+@app.route('/api/actualizar-bases-manuales', methods=['POST'])
+def actualizar_bases_manuales():
+    data = request.json
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    for clave in ['hoy', 'mes', 'facturas', 'ganancia']:
+        if clave in data:
+            v = float(data[clave])
+            q = 'UPDATE bases_manuales SET valor = %s WHERE clave = %s' if DB_URL else 'UPDATE bases_manuales SET valor = ? WHERE clave = ?'
+            cursor.execute(q, (v, clave))
+            
+    conn.commit()
+    conn.close()
+    return jsonify({"success": True})
 
 @app.route('/api/resumen-ventas', methods=['GET'])
 def resumen_ventas():
@@ -276,23 +301,28 @@ def resumen_ventas():
         conn = get_db()
         cursor = conn.cursor()
         
-        # Suma de ventas NUEVAS realizadas desde la app
+        # Leer valores base fijados por el usuario
+        cursor.execute("SELECT clave, valor FROM bases_manuales")
+        filas_b = cursor.fetchall()
+        bm = {}
+        for f in filas_b:
+            d = dict(f)
+            bm[d['clave']] = float(d['valor'])
+
+        base_hoy = bm.get('hoy', 21.10)
+        base_mes = bm.get('mes', 312.85)
+        base_facturas = bm.get('facturas', 93.00)
+        base_ganancia = bm.get('ganancia', 89.00)
+
+        # Sumar ventas nuevas hechas desde el tablero
         cursor.execute("SELECT COALESCE(SUM(monto), 0) FROM historial_ventas")
         res_v = cursor.fetchone()
-        ventas_nuevas = 0.0
-        if isinstance(res_v, dict):
-            ventas_nuevas = float(list(res_v.values())[0] or 0)
-        elif isinstance(res_v, (tuple, list)):
-            ventas_nuevas = float(res_v[0] or 0)
+        ventas_nuevas = float(list(res_v.values())[0] if isinstance(res_v, dict) else res_v[0] or 0)
 
-        # Suma de compras NUEVAS desde la app
+        # Sumar compras nuevas
         cursor.execute("SELECT COALESCE(SUM(monto), 0) FROM compras_facturas")
         res_c = cursor.fetchone()
-        compras_nuevas = 0.0
-        if isinstance(res_c, dict):
-            compras_nuevas = float(list(res_c.values())[0] or 0)
-        elif isinstance(res_c, (tuple, list)):
-            compras_nuevas = float(res_c[0] or 0)
+        compras_nuevas = float(list(res_c.values())[0] if isinstance(res_c, dict) else res_c[0] or 0)
 
         # Ganancias de productos nuevos vendidos
         cursor.execute('SELECT * FROM productos')
@@ -307,12 +337,10 @@ def resumen_ventas():
 
         conn.close()
         
-        # DATOS FIJOS REALES + LO QUE VAYAS VENDIENDO
-        total_hoy = 21.10 + ventas_nuevas
-        total_mes = 312.85 + ventas_nuevas
-        total_facturas = 93.00 + compras_nuevas
-        ganancia_real = 89.00 + ganancia_nuevas
-        
+        total_hoy = base_hoy + ventas_nuevas
+        total_mes = base_mes + ventas_nuevas
+        total_facturas = base_facturas + compras_nuevas
+        ganancia_real = base_ganancia + ganancia_nuevas
         capital_libre_reinversion = total_mes - total_facturas - ganancia_real
 
         return jsonify({
@@ -320,7 +348,11 @@ def resumen_ventas():
             "mes": float(total_mes),
             "compras_mes": float(total_facturas),
             "ganancia_real": float(ganancia_real),
-            "capital_reinversion": float(capital_libre_reinversion)
+            "capital_reinversion": float(capital_libre_reinversion),
+            "base_hoy": base_hoy,
+            "base_mes": base_mes,
+            "base_facturas": base_facturas,
+            "base_ganancia": base_ganancia
         })
     except Exception as e:
         return jsonify({
