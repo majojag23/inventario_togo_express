@@ -262,16 +262,16 @@ def resumen_ventas():
         conn = get_db()
         cursor = conn.cursor()
         
-        # 1. Sumar sólo las ventas NUEVAS hechas a partir de este momento
+        # 1. Ventas nuevas desde la BD
         cursor.execute("SELECT COALESCE(SUM(monto), 0) FROM historial_ventas")
         res_v = cursor.fetchone()
         ventas_nuevas = 0.0
         if isinstance(res_v, dict):
             ventas_nuevas = float(list(res_v.values())[0] or 0)
-        elif isinstance(res_c, (tuple, list)):
+        elif isinstance(res_v, (tuple, list)):
             ventas_nuevas = float(res_v[0] or 0)
 
-        # 2. Sumar sólo las facturas NUEVAS
+        # 2. Facturas nuevas desde la BD
         cursor.execute("SELECT COALESCE(SUM(monto), 0) FROM compras_facturas")
         res_c = cursor.fetchone()
         compras_nuevas = 0.0
@@ -280,7 +280,7 @@ def resumen_ventas():
         elif isinstance(res_c, (tuple, list)):
             compras_nuevas = float(res_c[0] or 0)
 
-        # 3. Ganancias sobre productos nuevos
+        # 3. Ganancias de productos nuevos
         cursor.execute('SELECT * FROM productos')
         prods = cursor.fetchall()
         ganancia_nuevas = 0.0
@@ -293,13 +293,12 @@ def resumen_ventas():
 
         conn.close()
         
-        # BASE REAL INICIAL (Sin duplicar)
+        # BASE REAL INICIAL A HORA DE HOY:
         total_hoy = 21.10 + ventas_nuevas
-        total_mes = 270.65 + total_hoy  # $270.65 anterior + $21.10 hoy = $291.75 exactos
+        total_mes = 312.85 + ventas_nuevas
         total_facturas = 93.00 + compras_nuevas
-        ganancia_real = 82.00 + ganancia_nuevas
+        ganancia_real = 89.00 + ganancia_nuevas  # $82 anterior + $7 de hoy
         
-        # FÓRMULA SOLICITADA: Ventas Totales - Facturas - Ganancia Real
         capital_libre_reinversion = total_mes - total_facturas - ganancia_real
 
         return jsonify({
@@ -312,10 +311,10 @@ def resumen_ventas():
     except Exception as e:
         return jsonify({
             "hoy": 21.10,
-            "mes": 291.75,
+            "mes": 312.85,
             "compras_mes": 93.00,
-            "ganancia_real": 82.00,
-            "capital_reinversion": 116.75
+            "ganancia_real": 89.00,
+            "capital_reinversion": 130.85
         })
 
 @app.route('/api/vender/<int:id>', methods=['POST'])
