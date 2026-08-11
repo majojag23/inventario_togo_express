@@ -222,7 +222,7 @@ def init_db():
         conn.commit()
 
         bases = [
-            ('hoy_fecha', 0.0),
+            ('hoy', 21.10),
             ('mes', 312.85),
             ('facturas', 93.00),
             ('ganancia', 89.00)
@@ -326,11 +326,14 @@ def actualizar_bases_manuales():
     conn = get_db()
     cursor = conn.cursor()
     
-    for clave in ['mes', 'facturas', 'ganancia']:
+    for clave in ['hoy', 'mes', 'facturas', 'ganancia']:
         if clave in data:
             v = float(data[clave])
-            q = 'UPDATE bases_manuales SET valor = %s WHERE clave = %s' if DB_URL else 'UPDATE bases_manuales SET valor = ? WHERE clave = ?'
-            cursor.execute(q, (v, clave))
+            q = 'INSERT INTO bases_manuales (clave, valor) VALUES (%s, %s) ON CONFLICT (clave) DO UPDATE SET valor = %s' if DB_URL else 'INSERT OR REPLACE INTO bases_manuales (clave, valor) VALUES (?, ?)'
+            if DB_URL:
+                cursor.execute(q, (clave, v, v))
+            else:
+                cursor.execute(q, (clave, v))
             
     conn.commit()
     conn.close()
@@ -345,28 +348,6 @@ def resumen_ventas():
         conn = get_db()
         cursor = conn.cursor()
         
-        # Ventas del día actual en El Salvador
-        q_hoy = "SELECT COALESCE(SUM(monto), 0) FROM historial_ventas WHERE fecha_sv = %s" if DB_URL else "SELECT COALESCE(SUM(monto), 0) FROM historial_ventas WHERE fecha_sv = ?"
-        cursor.execute(q_hoy, (hoy_str,))
-        res_vh = cursor.fetchone()
-        ventas_hoy_reales = float(list(res_vh.values())[0] if isinstance(res_vh, dict) else res_vh[0] or 0)
-
-        # Base para hoy
-        if hoy_str <= "2026-08-10":
-            total_hoy = 21.10 + ventas_hoy_reales
-        else:
-            total_hoy = ventas_hoy_reales
-
-        # Ventas del mes
-        cursor.execute("SELECT COALESCE(SUM(monto), 0) FROM historial_ventas")
-        res_vm = cursor.fetchone()
-        ventas_mes_reales = float(list(res_vm.values())[0] if isinstance(res_vm, dict) else res_vm[0] or 0)
-
-        # Compras
-        cursor.execute("SELECT COALESCE(SUM(monto), 0) FROM compras_facturas")
-        res_c = cursor.fetchone()
-        compras_nuevas = float(list(res_c.values())[0] if isinstance(res_c, dict) else res_c[0] or 0)
-
         cursor.execute("SELECT clave, valor FROM bases_manuales")
         filas_b = cursor.fetchall()
         bm = {}
@@ -374,10 +355,28 @@ def resumen_ventas():
             d = dict(f)
             bm[d['clave']] = float(d['valor'])
 
+        base_hoy = bm.get('hoy', 21.10)
         base_mes = bm.get('mes', 312.85)
         base_facturas = bm.get('facturas', 93.00)
         base_ganancia = bm.get('ganancia', 89.00)
 
+        # 1. Ventas del día actual
+        q_hoy = "SELECT COALESCE(SUM(monto), 0) FROM historial_ventas WHERE fecha_sv = %s" if DB_URL else "SELECT COALESCE(SUM(monto), 0) FROM historial_ventas WHERE fecha_sv = ?"
+        cursor.execute(q_hoy, (hoy_str,))
+        res_vh = cursor.fetchone()
+        ventas_hoy_reales = float(list(res_vh.values())[0] if isinstance(res_vh, dict) else res_vh[0] or 0)
+
+        # 2. Ventas del mes
+        cursor.execute("SELECT COALESCE(SUM(monto), 0) FROM historial_ventas")
+        res_vm = cursor.fetchone()
+        ventas_mes_reales = float(list(res_vm.values())[0] if isinstance(res_vm, dict) else res_vm[0] or 0)
+
+        # 3. Compras
+        cursor.execute("SELECT COALESCE(SUM(monto), 0) FROM compras_facturas")
+        res_c = cursor.fetchone()
+        compras_nuevas = float(list(res_c.values())[0] if isinstance(res_c, dict) else res_c[0] or 0)
+
+        # 4. Ganancias productos vendidos
         cursor.execute('SELECT * FROM productos')
         prods = cursor.fetchall()
         ganancia_nuevas = 0.0
@@ -389,7 +388,8 @@ def resumen_ventas():
             ganancia_nuevas += v * (precio - costo)
 
         conn.close()
-        
+
+        total_hoy = base_hoy + ventas_hoy_reales
         total_mes = base_mes + ventas_mes_reales
         total_facturas = base_facturas + compras_nuevas
         ganancia_real = base_ganancia + ganancia_nuevas
@@ -401,6 +401,7 @@ def resumen_ventas():
             "compras_mes": float(total_facturas),
             "ganancia_real": float(ganancia_real),
             "capital_reinversion": float(capital_libre_reinversion),
+            "base_hoy": base_hoy,
             "base_mes": base_mes,
             "base_facturas": base_facturas,
             "base_ganancia": base_ganancia
