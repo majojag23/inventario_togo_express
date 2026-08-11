@@ -180,7 +180,7 @@ def init_db():
                 producto_id INTEGER,
                 monto NUMERIC(10,2) NOT NULL,
                 fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                fecha_sv VARCHAR(20)
+                fecha_sv VARCHAR(50)
             )
         ''' if DB_URL else '''
             CREATE TABLE IF NOT EXISTS historial_ventas (
@@ -219,19 +219,26 @@ def init_db():
                 valor REAL NOT NULL
             )
         ''')
-
         conn.commit()
 
-        # Inicialización predeterminada de bases manuales (solo si la tabla está vacía)
-        bases = [
-            ('hoy', 21.10),
-            ('mes', 312.85),
-            ('facturas', 93.00),
-            ('ganancia', 89.00)
-        ]
+        # Asegurar columna fecha_sv si la tabla ya existía
+        if DB_URL:
+            try:
+                cursor.execute("ALTER TABLE historial_ventas ADD COLUMN IF NOT EXISTS fecha_sv VARCHAR(50);")
+                conn.commit()
+            except Exception:
+                conn.rollback()
+
+        bases = [('hoy', 21.10), ('mes', 312.85), ('facturas', 93.00), ('ganancia', 89.00)]
         for c, v in bases:
-            q_ins = 'INSERT INTO bases_manuales (clave, valor) VALUES (%s, %s) ON CONFLICT (clave) DO NOTHING' if DB_URL else 'INSERT OR IGNORE INTO bases_manuales (clave, valor) VALUES (?, ?)'
-            cursor.execute(q_ins, (c, v))
+            try:
+                if DB_URL:
+                    cursor.execute("INSERT INTO bases_manuales (clave, valor) VALUES (%s, %s) ON CONFLICT (clave) DO NOTHING", (c, v))
+                else:
+                    cursor.execute("INSERT OR IGNORE INTO bases_manuales (clave, valor) VALUES (?, ?)", (c, v))
+                conn.commit()
+            except Exception:
+                conn.rollback()
 
         cursor.execute("SELECT COUNT(*) FROM productos")
         res = cursor.fetchone()
@@ -324,19 +331,27 @@ def guardar_producto():
 
 @app.route('/api/actualizar-bases-manuales', methods=['POST'])
 def actualizar_bases_manuales():
-    data = request.json
-    conn = get_db()
-    cursor = conn.cursor()
-    
-    for clave in ['hoy', 'mes', 'facturas', 'ganancia']:
-        if clave in data:
-            v = float(data[clave])
-            q = 'INSERT INTO bases_manuales (clave, valor) VALUES (%s, %s) ON CONFLICT (clave) DO UPDATE SET valor = EXCLUDED.valor' if DB_URL else 'INSERT OR REPLACE INTO bases_manuales (clave, valor) VALUES (?, ?)'
-            cursor.execute(q, (clave, v))
-            
-    conn.commit()
-    conn.close()
-    return jsonify({"success": True})
+    try:
+        data = request.json or {}
+        conn = get_db()
+        cursor = conn.cursor()
+        
+        for clave in ['hoy', 'mes', 'facturas', 'ganancia']:
+            if clave in data:
+                v = float(data[clave])
+                if DB_URL:
+                    q = 'INSERT INTO bases_manuales (clave, valor) VALUES (%s, %s) ON CONFLICT (clave) DO UPDATE SET valor = EXCLUDED.valor'
+                    cursor.execute(q, (clave, v))
+                else:
+                    q = 'INSERT OR REPLACE INTO bases_manuales (clave, valor) VALUES (?, ?)'
+                    cursor.execute(q, (clave, v))
+                
+        conn.commit()
+        conn.close()
+        return jsonify({"success": True})
+    except Exception as e:
+        print("Error en actualizar_bases_manuales:", e)
+        return jsonify({"success": False, "error": str(e)}), 500
 
 @app.route('/api/resumen-ventas', methods=['GET'])
 def resumen_ventas():
@@ -346,46 +361,67 @@ def resumen_ventas():
 
         conn = get_db()
         cursor = conn.cursor()
-        
-        # 1. Cargar bases manuales guardadas
-        cursor.execute("SELECT clave, valor FROM bases_manuales")
-        filas_b = cursor.fetchall()
+
+        # 1. Obtener bases manuales
         bm = {}
-        for f in filas_b:
-            d = dict(f)
-            bm[d['clave']] = float(d['valor'])
+        try:
+            cursor.execute("SELECT clave, valor FROM bases_manuales")
+            filas_b = cursor.fetchall()
+            for f in filas_b:
+                d = dict(f)
+                bm[str(d['clave'])] = float(d['valor'])
+        except Exception:
+            conn.rollback()
 
         base_hoy = bm.get('hoy', 21.10)
         base_mes = bm.get('mes', 312.85)
         base_facturas = bm.get('facturas', 93.00)
         base_ganancia = bm.get('ganancia', 89.00)
 
-        # 2. Ventas adicionales hechas en el día actual
-        q_hoy = "SELECT COALESCE(SUM(monto), 0) FROM historial_ventas WHERE fecha_sv = %s" if DB_URL else "SELECT COALESCE(SUM(monto), 0) FROM historial_ventas WHERE fecha_sv = ?"
-        cursor.execute(q_hoy, (hoy_str,))
-        res_vh = cursor.fetchone()
-        ventas_hoy_reales = float(list(res_vh.values())[0] if isinstance(res_vh, dict) else res_vh[0] or 0)
+        # 2. Ventas del día
+        ventas_hoy_reales = 0.0
+        try:
+            q_hoy = "SELECT COALESCE(SUM(monto), 0) FROM historial_ventas WHERE fecha_sv = %s" if DB_URL else "SELECT COALESCE(SUM(monto), 0) FROM historial_ventas WHERE fecha_sv = ?"
+            cursor.execute(q_hoy, (hoy_str,))
+            res_vh = cursor.fetchone()
+            if res_vh:
+                ventas_hoy_reales = float(list(dict(res_vh).values())[0] if isinstance(res_vh, dict) else res_vh[0] or 0)
+        except Exception:
+            conn.rollback()
 
-        # 3. Ventas adicionales hechas en el mes
-        cursor.execute("SELECT COALESCE(SUM(monto), 0) FROM historial_ventas")
-        res_vm = cursor.fetchone()
-        ventas_mes_reales = float(list(res_vm.values())[0] if isinstance(res_vm, dict) else res_vm[0] or 0)
+        # 3. Ventas totales
+        ventas_mes_reales = 0.0
+        try:
+            cursor.execute("SELECT COALESCE(SUM(monto), 0) FROM historial_ventas")
+            res_vm = cursor.fetchone()
+            if res_vm:
+                ventas_mes_reales = float(list(dict(res_vm).values())[0] if isinstance(res_vm, dict) else res_vm[0] or 0)
+        except Exception:
+            conn.rollback()
 
         # 4. Compras agregadas
-        cursor.execute("SELECT COALESCE(SUM(monto), 0) FROM compras_facturas")
-        res_c = cursor.fetchone()
-        compras_nuevas = float(list(res_c.values())[0] if isinstance(res_c, dict) else res_c[0] or 0)
+        compras_nuevas = 0.0
+        try:
+            cursor.execute("SELECT COALESCE(SUM(monto), 0) FROM compras_facturas")
+            res_c = cursor.fetchone()
+            if res_c:
+                compras_nuevas = float(list(dict(res_c).values())[0] if isinstance(res_c, dict) else res_c[0] or 0)
+        except Exception:
+            conn.rollback()
 
-        # 5. Ganancias adicionales de ventas nuevas
-        cursor.execute('SELECT * FROM productos')
-        prods = cursor.fetchall()
+        # 5. Ganancias por productos
         ganancia_nuevas = 0.0
-        for p in prods:
-            d = dict(p)
-            v = int(d.get('ventas', 0) or 0)
-            precio = float(d.get('precio', 0) or 0)
-            costo = float(d.get('costo', 0) or 0)
-            ganancia_nuevas += v * (precio - costo)
+        try:
+            cursor.execute('SELECT ventas, precio, costo FROM productos')
+            prods = cursor.fetchall()
+            for p in prods:
+                d = dict(p)
+                v = int(d.get('ventas', 0) or 0)
+                precio = float(d.get('precio', 0) or 0)
+                costo = float(d.get('costo', 0) or 0)
+                ganancia_nuevas += v * (precio - costo)
+        except Exception:
+            conn.rollback()
 
         conn.close()
 
@@ -401,10 +437,10 @@ def resumen_ventas():
             "compras_mes": float(total_facturas),
             "ganancia_real": float(ganancia_real),
             "capital_reinversion": float(capital_libre_reinversion),
-            "base_hoy": base_hoy,
-            "base_mes": base_mes,
-            "base_facturas": base_facturas,
-            "base_ganancia": base_ganancia
+            "base_hoy": float(base_hoy),
+            "base_mes": float(base_mes),
+            "base_facturas": float(base_facturas),
+            "base_ganancia": float(base_ganancia)
         })
     except Exception as e:
         print("Error en resumen_ventas:", e)
@@ -413,7 +449,11 @@ def resumen_ventas():
             "mes": 312.85,
             "compras_mes": 93.00,
             "ganancia_real": 89.00,
-            "capital_reinversion": 130.85
+            "capital_reinversion": 130.85,
+            "base_hoy": 21.10,
+            "base_mes": 312.85,
+            "base_facturas": 93.00,
+            "base_ganancia": 89.00
         })
 
 @app.route('/api/vender/<int:id>', methods=['POST'])
@@ -471,18 +511,22 @@ def devolver_producto(id):
 
 @app.route('/api/agregar-compra', methods=['POST'])
 def agregar_compra():
-    data = request.json
-    concepto = data.get('concepto', 'Compra de Factura')
-    monto = float(data.get('monto', 0))
-    if monto > 0:
-        conn = get_db()
-        cursor = conn.cursor()
-        q = 'INSERT INTO compras_facturas (concepto, monto) VALUES (%s, %s)' if DB_URL else 'INSERT INTO compras_facturas (concepto, monto) VALUES (?, ?)'
-        cursor.execute(q, (concepto, monto))
-        conn.commit()
-        conn.close()
-        return jsonify({"success": True})
-    return jsonify({"success": False}), 400
+    try:
+        data = request.json or {}
+        concepto = data.get('concepto', 'Compra de Factura')
+        monto = float(data.get('monto', 0))
+        if monto > 0:
+            conn = get_db()
+            cursor = conn.cursor()
+            q = 'INSERT INTO compras_facturas (concepto, monto) VALUES (%s, %s)' if DB_URL else 'INSERT INTO compras_facturas (concepto, monto) VALUES (?, ?)'
+            cursor.execute(q, (concepto, monto))
+            conn.commit()
+            conn.close()
+            return jsonify({"success": True})
+        return jsonify({"success": False, "message": "Monto inválido"}), 400
+    except Exception as e:
+        print("Error en agregar_compra:", e)
+        return jsonify({"success": False, "error": str(e)}), 500
 
 @app.route('/api/historial-compras', methods=['GET'])
 def historial_compras():
