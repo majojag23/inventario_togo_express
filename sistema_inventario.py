@@ -221,7 +221,6 @@ def init_db():
         ''')
         conn.commit()
 
-        # Inyectar columna fecha_sv si falta en PostgreSQL
         try:
             if DB_URL:
                 cursor.execute("ALTER TABLE historial_ventas ADD COLUMN fecha_sv VARCHAR(50);")
@@ -231,13 +230,28 @@ def init_db():
         except Exception:
             conn.rollback()
 
-        bases = [('hoy', 21.10), ('mes', 312.85), ('facturas', 93.00), ('ganancia', 89.00)]
+        # LIMPIEZA DE ENSAYOS VIEJOS
+        try:
+            cursor.execute("DELETE FROM historial_ventas")
+            cursor.execute("DELETE FROM compras_facturas")
+            cursor.execute("UPDATE productos SET ventas = 0")
+            conn.commit()
+        except Exception:
+            conn.rollback()
+
+        # BASE EXACTA
+        bases = [
+            ('hoy', 0.00),
+            ('mes', 386.00),
+            ('facturas', 205.24), # $93 + $112.24
+            ('ganancia', 110.85)
+        ]
         for c, v in bases:
             try:
                 if DB_URL:
-                    cursor.execute("INSERT INTO bases_manuales (clave, valor) VALUES (%s, %s) ON CONFLICT (clave) DO NOTHING", (c, v))
+                    cursor.execute("INSERT INTO bases_manuales (clave, valor) VALUES (%s, %s) ON CONFLICT (clave) DO UPDATE SET valor = EXCLUDED.valor", (c, v))
                 else:
-                    cursor.execute("INSERT OR IGNORE INTO bases_manuales (clave, valor) VALUES (?, ?)", (c, v))
+                    cursor.execute("INSERT OR REPLACE INTO bases_manuales (clave, valor) VALUES (?, ?)", (c, v))
                 conn.commit()
             except Exception:
                 conn.rollback()
@@ -338,6 +352,10 @@ def actualizar_bases_manuales():
         conn = get_db()
         cursor = conn.cursor()
         
+        cursor.execute("DELETE FROM historial_ventas")
+        cursor.execute("DELETE FROM compras_facturas")
+        cursor.execute("UPDATE productos SET ventas = 0")
+        
         for clave in ['hoy', 'mes', 'facturas', 'ganancia']:
             if clave in data:
                 v = float(data[clave])
@@ -364,7 +382,6 @@ def resumen_ventas():
         conn = get_db()
         cursor = conn.cursor()
 
-        # 1. Obtener bases manuales
         bm = {}
         try:
             cursor.execute("SELECT clave, valor FROM bases_manuales")
@@ -375,12 +392,12 @@ def resumen_ventas():
         except Exception:
             conn.rollback()
 
-        base_hoy = bm.get('hoy', 21.10)
-        base_mes = bm.get('mes', 312.85)
-        base_facturas = bm.get('facturas', 93.00)
-        base_ganancia = bm.get('ganancia', 89.00)
+        base_hoy = bm.get('hoy', 0.00)
+        base_mes = bm.get('mes', 386.00)
+        base_facturas = bm.get('facturas', 205.24)
+        base_ganancia = bm.get('ganancia', 110.85)
 
-        # 2. Ventas del día
+        # Ventas nuevas desde las 12:00 AM
         ventas_hoy_reales = 0.0
         try:
             q_hoy = "SELECT COALESCE(SUM(monto), 0) FROM historial_ventas WHERE fecha_sv = %s" if DB_URL else "SELECT COALESCE(SUM(monto), 0) FROM historial_ventas WHERE fecha_sv = ?"
@@ -388,11 +405,9 @@ def resumen_ventas():
             res_vh = cursor.fetchone()
             if res_vh:
                 ventas_hoy_reales = float(list(dict(res_vh).values())[0] if isinstance(res_vh, dict) else res_vh[0] or 0)
-        except Exception as e:
-            print("Catch ventas hoy:", e)
+        except Exception:
             conn.rollback()
 
-        # 3. Ventas totales
         ventas_mes_reales = 0.0
         try:
             cursor.execute("SELECT COALESCE(SUM(monto), 0) FROM historial_ventas")
@@ -402,7 +417,6 @@ def resumen_ventas():
         except Exception:
             conn.rollback()
 
-        # 4. Compras agregadas
         compras_nuevas = 0.0
         try:
             cursor.execute("SELECT COALESCE(SUM(monto), 0) FROM compras_facturas")
@@ -412,7 +426,6 @@ def resumen_ventas():
         except Exception:
             conn.rollback()
 
-        # 5. Ganancias por productos
         ganancia_nuevas = 0.0
         try:
             cursor.execute('SELECT ventas, precio, costo FROM productos')
@@ -432,6 +445,8 @@ def resumen_ventas():
         total_mes = base_mes + ventas_mes_reales
         total_facturas = base_facturas + compras_nuevas
         ganancia_real = base_ganancia + ganancia_nuevas
+        
+        # FÓRMULA DE CAJA REINVERSIÓN REAL: Ventas Mes - Compras Facturas - Ganancia Real
         capital_libre_reinversion = total_mes - total_facturas - ganancia_real
 
         return jsonify({
@@ -448,15 +463,15 @@ def resumen_ventas():
     except Exception as e:
         print("Error general en resumen_ventas:", e)
         return jsonify({
-            "hoy": 21.10,
-            "mes": 312.85,
-            "compras_mes": 93.00,
-            "ganancia_real": 89.00,
-            "capital_reinversion": 130.85,
-            "base_hoy": 21.10,
-            "base_mes": 312.85,
-            "base_facturas": 93.00,
-            "base_ganancia": 89.00
+            "hoy": 0.00,
+            "mes": 386.00,
+            "compras_mes": 205.24,
+            "ganancia_real": 110.85,
+            "capital_reinversion": 69.91,
+            "base_hoy": 0.00,
+            "base_mes": 386.00,
+            "base_facturas": 205.24,
+            "base_ganancia": 110.85
         })
 
 @app.route('/api/vender/<int:id>', methods=['POST'])
