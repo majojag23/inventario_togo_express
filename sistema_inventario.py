@@ -221,13 +221,15 @@ def init_db():
         ''')
         conn.commit()
 
-        # Asegurar columna fecha_sv si la tabla ya existía
-        if DB_URL:
-            try:
-                cursor.execute("ALTER TABLE historial_ventas ADD COLUMN IF NOT EXISTS fecha_sv VARCHAR(50);")
-                conn.commit()
-            except Exception:
-                conn.rollback()
+        # Inyectar columna fecha_sv si falta en PostgreSQL
+        try:
+            if DB_URL:
+                cursor.execute("ALTER TABLE historial_ventas ADD COLUMN fecha_sv VARCHAR(50);")
+            else:
+                cursor.execute("ALTER TABLE historial_ventas ADD COLUMN fecha_sv TEXT;")
+            conn.commit()
+        except Exception:
+            conn.rollback()
 
         bases = [('hoy', 21.10), ('mes', 312.85), ('facturas', 93.00), ('ganancia', 89.00)]
         for c, v in bases:
@@ -386,7 +388,8 @@ def resumen_ventas():
             res_vh = cursor.fetchone()
             if res_vh:
                 ventas_hoy_reales = float(list(dict(res_vh).values())[0] if isinstance(res_vh, dict) else res_vh[0] or 0)
-        except Exception:
+        except Exception as e:
+            print("Catch ventas hoy:", e)
             conn.rollback()
 
         # 3. Ventas totales
@@ -443,7 +446,7 @@ def resumen_ventas():
             "base_ganancia": float(base_ganancia)
         })
     except Exception as e:
-        print("Error en resumen_ventas:", e)
+        print("Error general en resumen_ventas:", e)
         return jsonify({
             "hoy": 21.10,
             "mes": 312.85,
@@ -551,20 +554,24 @@ def detalle_historial(tipo):
     hoy_str = now_sv.strftime('%Y-%m-%d')
 
     if tipo == 'hoy':
-        q = '''
-            SELECT h.id, COALESCE(p.nombre, 'Venta') as producto, h.monto, h.fecha 
-            FROM historial_ventas h 
-            LEFT JOIN productos p ON h.producto_id = p.id 
-            WHERE h.fecha_sv = %s
-            ORDER BY h.fecha DESC
-        ''' if DB_URL else '''
-            SELECT h.id, COALESCE(p.nombre, 'Venta') as producto, h.monto, h.fecha 
-            FROM historial_ventas h 
-            LEFT JOIN productos p ON h.producto_id = p.id 
-            WHERE h.fecha_sv = ?
-            ORDER BY h.fecha DESC
-        '''
-        cursor.execute(q, (hoy_str,))
+        try:
+            q = '''
+                SELECT h.id, COALESCE(p.nombre, 'Venta') as producto, h.monto, h.fecha 
+                FROM historial_ventas h 
+                LEFT JOIN productos p ON h.producto_id = p.id 
+                WHERE h.fecha_sv = %s
+                ORDER BY h.fecha DESC
+            ''' if DB_URL else '''
+                SELECT h.id, COALESCE(p.nombre, 'Venta') as producto, h.monto, h.fecha 
+                FROM historial_ventas h 
+                LEFT JOIN productos p ON h.producto_id = p.id 
+                WHERE h.fecha_sv = ?
+                ORDER BY h.fecha DESC
+            '''
+            cursor.execute(q, (hoy_str,))
+        except Exception:
+            conn.rollback()
+            cursor.execute("SELECT h.id, COALESCE(p.nombre, 'Venta') as producto, h.monto, h.fecha FROM historial_ventas h LEFT JOIN productos p ON h.producto_id = p.id ORDER BY h.fecha DESC")
     else:
         q = '''
             SELECT h.id, COALESCE(p.nombre, 'Venta') as producto, h.monto, h.fecha 
