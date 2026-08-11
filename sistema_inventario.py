@@ -141,6 +141,7 @@ PRODUCTOS_FACTURA = [
     ("Smirnoff Vodka", 18.99, 12.95, 1, "smirnoff vodka.jpg"),
     ("Ron Bacardí Blanco", 21.50, 14.60, 1, "Ron Bacardí Blanco.jpg"),
     ("Ron Bacardí Carta Blanco Oro", 14.50, 9.40, 2, "Ron Bacardí Carta Blanco Oro.jpg"),
+    ("Ron Bacardí Oro 750 ml", 21.00, 14.00, 1, "Ron Bacardí Oro 750 ml.jpg"),
     ("Ron Bacardí Oro 980 ml", 21.00, 14.00, 1, "Ron Bacardí Oro 750 ml.jpg"),
     ("Vino Reservado Concha y Toro", 8.99, 5.95, 1, "Vino Reservado Concha y Toro.jpg"),
     ("agua", 2.00, 1.50, 2, "agua alpina.jpg")
@@ -221,6 +222,7 @@ def init_db():
 
         conn.commit()
 
+        # Inicialización predeterminada de bases manuales (solo si la tabla está vacía)
         bases = [
             ('hoy', 21.10),
             ('mes', 312.85),
@@ -329,11 +331,8 @@ def actualizar_bases_manuales():
     for clave in ['hoy', 'mes', 'facturas', 'ganancia']:
         if clave in data:
             v = float(data[clave])
-            q = 'INSERT INTO bases_manuales (clave, valor) VALUES (%s, %s) ON CONFLICT (clave) DO UPDATE SET valor = %s' if DB_URL else 'INSERT OR REPLACE INTO bases_manuales (clave, valor) VALUES (?, ?)'
-            if DB_URL:
-                cursor.execute(q, (clave, v, v))
-            else:
-                cursor.execute(q, (clave, v))
+            q = 'INSERT INTO bases_manuales (clave, valor) VALUES (%s, %s) ON CONFLICT (clave) DO UPDATE SET valor = EXCLUDED.valor' if DB_URL else 'INSERT OR REPLACE INTO bases_manuales (clave, valor) VALUES (?, ?)'
+            cursor.execute(q, (clave, v))
             
     conn.commit()
     conn.close()
@@ -348,6 +347,7 @@ def resumen_ventas():
         conn = get_db()
         cursor = conn.cursor()
         
+        # 1. Cargar bases manuales guardadas
         cursor.execute("SELECT clave, valor FROM bases_manuales")
         filas_b = cursor.fetchall()
         bm = {}
@@ -360,23 +360,23 @@ def resumen_ventas():
         base_facturas = bm.get('facturas', 93.00)
         base_ganancia = bm.get('ganancia', 89.00)
 
-        # 1. Ventas del día actual
+        # 2. Ventas adicionales hechas en el día actual
         q_hoy = "SELECT COALESCE(SUM(monto), 0) FROM historial_ventas WHERE fecha_sv = %s" if DB_URL else "SELECT COALESCE(SUM(monto), 0) FROM historial_ventas WHERE fecha_sv = ?"
         cursor.execute(q_hoy, (hoy_str,))
         res_vh = cursor.fetchone()
         ventas_hoy_reales = float(list(res_vh.values())[0] if isinstance(res_vh, dict) else res_vh[0] or 0)
 
-        # 2. Ventas del mes
+        # 3. Ventas adicionales hechas en el mes
         cursor.execute("SELECT COALESCE(SUM(monto), 0) FROM historial_ventas")
         res_vm = cursor.fetchone()
         ventas_mes_reales = float(list(res_vm.values())[0] if isinstance(res_vm, dict) else res_vm[0] or 0)
 
-        # 3. Compras
+        # 4. Compras agregadas
         cursor.execute("SELECT COALESCE(SUM(monto), 0) FROM compras_facturas")
         res_c = cursor.fetchone()
         compras_nuevas = float(list(res_c.values())[0] if isinstance(res_c, dict) else res_c[0] or 0)
 
-        # 4. Ganancias productos vendidos
+        # 5. Ganancias adicionales de ventas nuevas
         cursor.execute('SELECT * FROM productos')
         prods = cursor.fetchall()
         ganancia_nuevas = 0.0
