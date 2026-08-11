@@ -278,13 +278,48 @@ def get_productos():
         
     return jsonify(lista)
 
+@app.route('/api/producto/guardar', methods=['POST'])
+def guardar_producto():
+    try:
+        id_prod = request.form.get('id')
+        nombre = request.form.get('nombre')
+        precio = float(request.form.get('precio', 0))
+        costo = float(request.form.get('costo', 0))
+        stock = int(request.form.get('stock', 0))
+        imagen_actual = request.form.get('imagen_actual')
+
+        imagen_file = request.files.get('imagen')
+        filename = None
+
+        if imagen_file and allowed_file(imagen_file.filename):
+            filename = secure_filename(imagen_file.filename)
+            imagen_file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+
+        conn = get_db()
+        cursor = conn.cursor()
+
+        if id_prod and id_prod.strip() != "":
+            id_int = int(id_prod)
+            foto_final = filename if filename else (imagen_actual if imagen_actual else 'default.jpg')
+            q = 'UPDATE productos SET nombre=%s, precio=%s, costo=%s, stock=%s, imagen=%s WHERE id=%s' if DB_URL else 'UPDATE productos SET nombre=?, precio=?, costo=?, stock=?, imagen=? WHERE id=?'
+            cursor.execute(q, (nombre, precio, costo, stock, foto_final, id_int))
+        else:
+            q = 'INSERT INTO productos (nombre, precio, costo, stock, imagen) VALUES (%s, %s, %s, %s, %s)' if DB_URL else 'INSERT INTO productos (nombre, precio, costo, stock, imagen) VALUES (?, ?, ?, ?, ?)'
+            cursor.execute(q, (nombre, precio, costo, stock, filename or 'default.jpg'))
+
+        conn.commit()
+        conn.close()
+        return jsonify({"success": True})
+    except Exception as e:
+        print("Error al guardar producto:", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
 @app.route('/api/actualizar-bases-manuales', methods=['POST'])
 def actualizar_bases_manuales():
     data = request.json
     conn = get_db()
     cursor = conn.cursor()
     
-    # IMPORTANTE: Vacía acumulados de prueba anteriores para que manden sólo tus valores
     cursor.execute("DELETE FROM historial_ventas")
     cursor.execute("DELETE FROM compras_facturas")
     cursor.execute("UPDATE productos SET ventas = 0")
