@@ -94,25 +94,25 @@
                     <div class="col-6 col-md-3">
                         <div class="card border-0 shadow-sm p-3 text-center text-white rounded-4 metric-card-clickable" style="background-color: #00a8ff;" onclick="verHistorial('hoy')">
                             <h6 class="text-uppercase font-bold" style="font-size: 0.75rem;">📅 Ventas de Hoy</h6>
-                            <h3 id="metric-hoy" class="fw-bold mb-0">$21.10</h3>
+                            <h3 id="metric-hoy" class="fw-bold mb-0">$0.00</h3>
                         </div>
                     </div>
                     <div class="col-6 col-md-3">
                         <div class="card border-0 shadow-sm p-3 text-center text-white rounded-4 metric-card-clickable" style="background-color: #10b981;" onclick="verHistorial('mes')">
                             <h6 class="text-uppercase font-bold" style="font-size: 0.75rem;">📆 Ventas del Mes</h6>
-                            <h3 id="metric-mes" class="fw-bold mb-0">$312.85</h3>
+                            <h3 id="metric-mes" class="fw-bold mb-0">$0.00</h3>
                         </div>
                     </div>
                     <div class="col-6 col-md-3">
                         <div class="card border-0 shadow-sm p-3 text-center text-white rounded-4" style="background-color: #8b5cf6;">
                             <h6 class="text-uppercase font-bold" style="font-size: 0.75rem;">📈 Ganancia Real Líquida</h6>
-                            <h3 id="metric-ganancia-real" class="fw-bold mb-0">$89.00</h3>
+                            <h3 id="metric-ganancia-real" class="fw-bold mb-0">$0.00</h3>
                         </div>
                     </div>
                     <div class="col-6 col-md-3">
                         <div class="card border-0 shadow-sm p-3 text-center text-white rounded-4" style="background-color: #0d9488;">
                             <h6 class="text-uppercase font-bold" style="font-size: 0.75rem;">📦 Capital Libre p/ Reinvertir</h6>
-                            <h3 id="metric-capital" class="fw-bold mb-0">$130.85</h3>
+                            <h3 id="metric-capital" class="fw-bold mb-0">$0.00</h3>
                         </div>
                     </div>
                     <div class="col-12">
@@ -120,7 +120,7 @@
                             <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
                                 <div class="text-white metric-card-clickable p-2 rounded-3 w-100 mb-2" style="background-color: #f59e0b;" onclick="verHistorialCompras()">
                                     <h6 class="text-uppercase font-bold mb-1" style="font-size: 0.85rem;">🧾 Facturas y Compras a Proveedores (Mes)</h6>
-                                    <h3 id="metric-compras" class="fw-bold mb-0">$93.00</h3>
+                                    <h3 id="metric-compras" class="fw-bold mb-0">$0.00</h3>
                                 </div>
                                 <button class="btn btn-dark btn-sm fw-bold w-100" onclick="abrirModalBases()">⚙️ Ajustar Valores Base Manuales</button>
                             </div>
@@ -358,19 +358,19 @@
         }
 
         function abrirModalBases() {
-            document.getElementById('base-hoy').value = datosResumen.base_hoy || 21.10;
-            document.getElementById('base-mes').value = datosResumen.base_mes || 312.85;
-            document.getElementById('base-facturas').value = datosResumen.base_facturas || 93.00;
-            document.getElementById('base-ganancia').value = datosResumen.base_ganancia || 89.00;
+            document.getElementById('base-hoy').value = datosResumen.base_hoy !== undefined ? datosResumen.base_hoy : 21.10;
+            document.getElementById('base-mes').value = datosResumen.base_mes !== undefined ? datosResumen.base_mes : 312.85;
+            document.getElementById('base-facturas').value = datosResumen.base_facturas !== undefined ? datosResumen.base_facturas : 93.00;
+            document.getElementById('base-ganancia').value = datosResumen.base_ganancia !== undefined ? datosResumen.base_ganancia : 89.00;
             modalBasesObj.show();
         }
 
         document.getElementById('formBases').onsubmit = async (e) => {
             e.preventDefault();
-            const hoy = parseFloat(document.getElementById('base-hoy').value);
-            const mes = parseFloat(document.getElementById('base-mes').value);
-            const facturas = parseFloat(document.getElementById('base-facturas').value);
-            const ganancia = parseFloat(document.getElementById('base-ganancia').value);
+            const hoy = parseFloat(document.getElementById('base-hoy').value) || 0;
+            const mes = parseFloat(document.getElementById('base-mes').value) || 0;
+            const facturas = parseFloat(document.getElementById('base-facturas').value) || 0;
+            const ganancia = parseFloat(document.getElementById('base-ganancia').value) || 0;
 
             const res = await fetch('/api/actualizar-bases-manuales', {
                 method: 'POST',
@@ -382,6 +382,8 @@
                 modalBasesObj.hide();
                 alert("¡Valores base guardados con éxito!");
                 cargarProductos();
+            } else {
+                alert("Ocurrió un error al guardar los valores base");
             }
         };
 
@@ -468,6 +470,8 @@
                 modalCompraObj.hide();
                 alert("¡Factura de compra registrada con éxito!");
                 cargarProductos();
+            } else {
+                alert("Ocurrió un error al guardar la factura");
             }
         };
 
@@ -508,6 +512,8 @@
             if (res.ok) {
                 modalObj.hide();
                 cargarProductos();
+            } else {
+                alert("Ocurrió un error al guardar el producto");
             }
         };
 
