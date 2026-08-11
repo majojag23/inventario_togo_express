@@ -1,7 +1,6 @@
 import os
 import sqlite3
-from datetime import datetime
-import pytz
+from datetime import datetime, timezone, timedelta
 from flask import Flask, render_template, request, jsonify, send_from_directory
 from werkzeug.utils import secure_filename
 import psycopg2
@@ -14,7 +13,7 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 DB_URL = os.environ.get('DATABASE_URL')
-TZ_SV = pytz.timezone('America/El_Salvador')
+TZ_SV = timezone(timedelta(hours=-6))
 
 def get_now_sv():
     return datetime.now(TZ_SV)
@@ -346,30 +345,28 @@ def resumen_ventas():
         conn = get_db()
         cursor = conn.cursor()
         
-        # 1. Ventas del día actual en El Salvador
+        # Ventas del día actual en El Salvador
         q_hoy = "SELECT COALESCE(SUM(monto), 0) FROM historial_ventas WHERE fecha_sv = %s" if DB_URL else "SELECT COALESCE(SUM(monto), 0) FROM historial_ventas WHERE fecha_sv = ?"
         cursor.execute(q_hoy, (hoy_str,))
         res_vh = cursor.fetchone()
         ventas_hoy_reales = float(list(res_vh.values())[0] if isinstance(res_vh, dict) else res_vh[0] or 0)
 
-        # Si hoy es 2026-08-10 o anterior antes de medianoche, le sumamos la base de $21.10
+        # Base para hoy
         if hoy_str <= "2026-08-10":
             total_hoy = 21.10 + ventas_hoy_reales
         else:
-            # ¡A LAS 12:00 AM DE MAÑANA PASA AUTOMÁTICAMENTE A $0.00 + VENTAS NUEVAS DE ESE DÍA!
             total_hoy = ventas_hoy_reales
 
-        # 2. Ventas totales del mes
+        # Ventas del mes
         cursor.execute("SELECT COALESCE(SUM(monto), 0) FROM historial_ventas")
         res_vm = cursor.fetchone()
         ventas_mes_reales = float(list(res_vm.values())[0] if isinstance(res_vm, dict) else res_vm[0] or 0)
 
-        # 3. Compras del mes
+        # Compras
         cursor.execute("SELECT COALESCE(SUM(monto), 0) FROM compras_facturas")
         res_c = cursor.fetchone()
         compras_nuevas = float(list(res_c.values())[0] if isinstance(res_c, dict) else res_c[0] or 0)
 
-        # 4. Leer bases manuales
         cursor.execute("SELECT clave, valor FROM bases_manuales")
         filas_b = cursor.fetchall()
         bm = {}
@@ -381,7 +378,6 @@ def resumen_ventas():
         base_facturas = bm.get('facturas', 93.00)
         base_ganancia = bm.get('ganancia', 89.00)
 
-        # Ganancias de productos
         cursor.execute('SELECT * FROM productos')
         prods = cursor.fetchall()
         ganancia_nuevas = 0.0
@@ -432,7 +428,6 @@ def vender_producto(id):
         precio_prod = float(prod['precio'])
         now_sv = get_now_sv()
         hoy_str = now_sv.strftime('%Y-%m-%d')
-        fecha_completa_str = now_sv.strftime('%Y-%m-%d %H:%M:%S')
 
         q_upd = 'UPDATE productos SET stock = stock - 1, ventas = ventas + 1 WHERE id = %s' if DB_URL else 'UPDATE productos SET stock = stock - 1, ventas = ventas + 1 WHERE id = ?'
         cursor.execute(q_upd, (id,))
