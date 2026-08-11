@@ -1,6 +1,7 @@
 import os
 import sqlite3
 from datetime import datetime
+import pytz
 from flask import Flask, render_template, request, jsonify, send_from_directory
 from werkzeug.utils import secure_filename
 import psycopg2
@@ -13,6 +14,10 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 DB_URL = os.environ.get('DATABASE_URL')
+TZ_SV = pytz.timezone('America/El_Salvador')
+
+def get_now_sv():
+    return datetime.now(TZ_SV)
 
 def get_db():
     if DB_URL:
@@ -174,14 +179,16 @@ def init_db():
                 id SERIAL PRIMARY KEY,
                 producto_id INTEGER,
                 monto NUMERIC(10,2) NOT NULL,
-                fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                fecha_sv VARCHAR(20)
             )
         ''' if DB_URL else '''
             CREATE TABLE IF NOT EXISTS historial_ventas (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 producto_id INTEGER,
                 monto REAL NOT NULL,
-                fecha DATETIME DEFAULT CURRENT_TIMESTAMP
+                fecha DATETIME DEFAULT CURRENT_TIMESTAMP,
+                fecha_sv TEXT
             )
         ''')
 
@@ -216,7 +223,7 @@ def init_db():
         conn.commit()
 
         bases = [
-            ('hoy', 21.10),
+            ('hoy_fecha', 0.0),
             ('mes', 312.85),
             ('facturas', 93.00),
             ('ganancia', 89.00)
@@ -320,11 +327,7 @@ def actualizar_bases_manuales():
     conn = get_db()
     cursor = conn.cursor()
     
-    cursor.execute("DELETE FROM historial_ventas")
-    cursor.execute("DELETE FROM compras_facturas")
-    cursor.execute("UPDATE productos SET ventas = 0")
-    
-    for clave in ['hoy', 'mes', 'facturas', 'ganancia']:
+    for clave in ['mes', 'facturas', 'ganancia']:
         if clave in data:
             v = float(data[clave])
             q = 'UPDATE bases_manuales SET valor = %s WHERE clave = %s' if DB_URL else 'UPDATE bases_manuales SET valor = ? WHERE clave = ?'
@@ -337,9 +340,36 @@ def actualizar_bases_manuales():
 @app.route('/api/resumen-ventas', methods=['GET'])
 def resumen_ventas():
     try:
+        now_sv = get_now_sv()
+        hoy_str = now_sv.strftime('%Y-%m-%d')
+
         conn = get_db()
         cursor = conn.cursor()
         
+        # 1. Ventas del día actual en El Salvador
+        q_hoy = "SELECT COALESCE(SUM(monto), 0) FROM historial_ventas WHERE fecha_sv = %s" if DB_URL else "SELECT COALESCE(SUM(monto), 0) FROM historial_ventas WHERE fecha_sv = ?"
+        cursor.execute(q_hoy, (hoy_str,))
+        res_vh = cursor.fetchone()
+        ventas_hoy_reales = float(list(res_vh.values())[0] if isinstance(res_vh, dict) else res_vh[0] or 0)
+
+        # Si hoy es 2026-08-10 o anterior antes de medianoche, le sumamos la base de $21.10
+        if hoy_str <= "2026-08-10":
+            total_hoy = 21.10 + ventas_hoy_reales
+        else:
+            # ¡A LAS 12:00 AM DE MAÑANA PASA AUTOMÁTICAMENTE A $0.00 + VENTAS NUEVAS DE ESE DÍA!
+            total_hoy = ventas_hoy_reales
+
+        # 2. Ventas totales del mes
+        cursor.execute("SELECT COALESCE(SUM(monto), 0) FROM historial_ventas")
+        res_vm = cursor.fetchone()
+        ventas_mes_reales = float(list(res_vm.values())[0] if isinstance(res_vm, dict) else res_vm[0] or 0)
+
+        # 3. Compras del mes
+        cursor.execute("SELECT COALESCE(SUM(monto), 0) FROM compras_facturas")
+        res_c = cursor.fetchone()
+        compras_nuevas = float(list(res_c.values())[0] if isinstance(res_c, dict) else res_c[0] or 0)
+
+        # 4. Leer bases manuales
         cursor.execute("SELECT clave, valor FROM bases_manuales")
         filas_b = cursor.fetchall()
         bm = {}
@@ -347,19 +377,11 @@ def resumen_ventas():
             d = dict(f)
             bm[d['clave']] = float(d['valor'])
 
-        base_hoy = bm.get('hoy', 21.10)
         base_mes = bm.get('mes', 312.85)
         base_facturas = bm.get('facturas', 93.00)
         base_ganancia = bm.get('ganancia', 89.00)
 
-        cursor.execute("SELECT COALESCE(SUM(monto), 0) FROM historial_ventas")
-        res_v = cursor.fetchone()
-        ventas_nuevas = float(list(res_v.values())[0] if isinstance(res_v, dict) else res_v[0] or 0)
-
-        cursor.execute("SELECT COALESCE(SUM(monto), 0) FROM compras_facturas")
-        res_c = cursor.fetchone()
-        compras_nuevas = float(list(res_c.values())[0] if isinstance(res_c, dict) else res_c[0] or 0)
-
+        # Ganancias de productos
         cursor.execute('SELECT * FROM productos')
         prods = cursor.fetchall()
         ganancia_nuevas = 0.0
@@ -372,8 +394,7 @@ def resumen_ventas():
 
         conn.close()
         
-        total_hoy = base_hoy + ventas_nuevas
-        total_mes = base_mes + ventas_nuevas
+        total_mes = base_mes + ventas_mes_reales
         total_facturas = base_facturas + compras_nuevas
         ganancia_real = base_ganancia + ganancia_nuevas
         capital_libre_reinversion = total_mes - total_facturas - ganancia_real
@@ -384,12 +405,12 @@ def resumen_ventas():
             "compras_mes": float(total_facturas),
             "ganancia_real": float(ganancia_real),
             "capital_reinversion": float(capital_libre_reinversion),
-            "base_hoy": base_hoy,
             "base_mes": base_mes,
             "base_facturas": base_facturas,
             "base_ganancia": base_ganancia
         })
     except Exception as e:
+        print("Error en resumen_ventas:", e)
         return jsonify({
             "hoy": 21.10,
             "mes": 312.85,
@@ -409,11 +430,15 @@ def vender_producto(id):
     
     if prod and prod['stock'] > 0:
         precio_prod = float(prod['precio'])
+        now_sv = get_now_sv()
+        hoy_str = now_sv.strftime('%Y-%m-%d')
+        fecha_completa_str = now_sv.strftime('%Y-%m-%d %H:%M:%S')
+
         q_upd = 'UPDATE productos SET stock = stock - 1, ventas = ventas + 1 WHERE id = %s' if DB_URL else 'UPDATE productos SET stock = stock - 1, ventas = ventas + 1 WHERE id = ?'
         cursor.execute(q_upd, (id,))
         
-        q_hist = 'INSERT INTO historial_ventas (producto_id, monto) VALUES (%s, %s)' if DB_URL else 'INSERT INTO historial_ventas (producto_id, monto) VALUES (?, ?)'
-        cursor.execute(q_hist, (id, precio_prod))
+        q_hist = 'INSERT INTO historial_ventas (producto_id, monto, fecha_sv) VALUES (%s, %s, %s)' if DB_URL else 'INSERT INTO historial_ventas (producto_id, monto, fecha_sv) VALUES (?, ?, ?)'
+        cursor.execute(q_hist, (id, precio_prod, hoy_str))
         
         conn.commit()
         conn.close()
@@ -433,11 +458,14 @@ def devolver_producto(id):
     if prod:
         precio_prod = float(prod['precio'])
         nuevas_ventas = max(0, int(prod['ventas']) - 1)
+        now_sv = get_now_sv()
+        hoy_str = now_sv.strftime('%Y-%m-%d')
+
         q_upd = 'UPDATE productos SET stock = stock + 1, ventas = %s WHERE id = %s' if DB_URL else 'UPDATE productos SET stock = stock + 1, ventas = ? WHERE id = ?'
         cursor.execute(q_upd, (nuevas_ventas, id))
         
-        q_hist = 'INSERT INTO historial_ventas (producto_id, monto) VALUES (%s, %s)' if DB_URL else 'INSERT INTO historial_ventas (producto_id, monto) VALUES (?, ?)'
-        cursor.execute(q_hist, (id, -precio_prod))
+        q_hist = 'INSERT INTO historial_ventas (producto_id, monto, fecha_sv) VALUES (%s, %s, %s)' if DB_URL else 'INSERT INTO historial_ventas (producto_id, monto, fecha_sv) VALUES (?, ?, ?)'
+        cursor.execute(q_hist, (id, -precio_prod, hoy_str))
 
         conn.commit()
         conn.close()
@@ -479,15 +507,43 @@ def historial_compras():
 def detalle_historial(tipo):
     conn = get_db()
     cursor = conn.cursor()
-    q = 'SELECT h.id, COALESCE(p.nombre, \'Venta / Registro Contable\') as producto, h.monto, h.fecha FROM historial_ventas h LEFT JOIN productos p ON h.producto_id = p.id ORDER BY h.fecha DESC'
-    cursor.execute(q)
+    now_sv = get_now_sv()
+    hoy_str = now_sv.strftime('%Y-%m-%d')
+
+    if tipo == 'hoy':
+        q = '''
+            SELECT h.id, COALESCE(p.nombre, 'Venta') as producto, h.monto, h.fecha 
+            FROM historial_ventas h 
+            LEFT JOIN productos p ON h.producto_id = p.id 
+            WHERE h.fecha_sv = %s
+            ORDER BY h.fecha DESC
+        ''' if DB_URL else '''
+            SELECT h.id, COALESCE(p.nombre, 'Venta') as producto, h.monto, h.fecha 
+            FROM historial_ventas h 
+            LEFT JOIN productos p ON h.producto_id = p.id 
+            WHERE h.fecha_sv = ?
+            ORDER BY h.fecha DESC
+        '''
+        cursor.execute(q, (hoy_str,))
+    else:
+        q = '''
+            SELECT h.id, COALESCE(p.nombre, 'Venta') as producto, h.monto, h.fecha 
+            FROM historial_ventas h 
+            LEFT JOIN productos p ON h.producto_id = p.id 
+            ORDER BY h.fecha DESC
+        '''
+        cursor.execute(q)
+
     filas = cursor.fetchall()
     conn.close()
     res = []
     for f in filas:
         d = dict(f)
         d['monto'] = float(d['monto'])
-        d['fecha'] = str(d['fecha'])
+        if isinstance(d['fecha'], datetime):
+            d['fecha'] = d['fecha'].strftime('%Y-%m-%d %H:%M:%S')
+        else:
+            d['fecha'] = str(d['fecha'])
         res.append(d)
     return jsonify(res)
 
