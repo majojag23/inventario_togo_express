@@ -29,6 +29,12 @@ def get_db():
         return conn
 
 MAPA_IMAGENES = {
+    "Pingüinos Cookies & Cream (80g)": "pinguinos cookies 80gr.jpg",
+    "Pingüinos Clásicos (80g)": "pinguinos 80gr.jpg",
+    "Gansito Marinela (50g)": "gansito 50 gr.jpg",
+    "Galletas Choco Wow Chispas": "galletas chocowow.jpg",
+    "Pingüinos Triple Chocolate (80g)": "pinguinos triple chocolate  80gr.jpg",
+    "Pingüinos Fresa Crush (80g)": "pinguinos fresa  80gr.jpg",
     "Cerveza Corona Extra (330 mL)": "Cerveza Corona Extra (330 mL).jpg",
     "Cerveza Corona Extra six": "Cerveza Corona Extra six.jpg",
     "Cerveza Pilsener (355 mL) u": "Cerveza Pilsener (355 mL) u.jpg",
@@ -92,6 +98,12 @@ MAPA_IMAGENES = {
 }
 
 PRODUCTOS_FACTURA = [
+    ("Pingüinos Cookies & Cream (80g)", 1.25, 0.85, 6, "pinguinos cookies 80gr.jpg"),
+    ("Pingüinos Clásicos (80g)", 1.25, 0.85, 6, "pinguinos 80gr.jpg"),
+    ("Gansito Marinela (50g)", 1.00, 0.65, 6, "gansito 50 gr.jpg"),
+    ("Galletas Choco Wow Chispas", 0.60, 0.40, 10, "galletas chocowow.jpg"),
+    ("Pingüinos Triple Chocolate (80g)", 1.25, 0.85, 6, "pinguinos triple chocolate  80gr.jpg"),
+    ("Pingüinos Fresa Crush (80g)", 1.25, 0.85, 6, "pinguinos fresa  80gr.jpg"),
     ("Cerveza Corona Extra (330 mL)", 2.25, 1.65, 24, "Cerveza Corona Extra (330 mL).jpg"),
     ("Cerveza Corona Extra six", 12.50, 9.90, 4, "Cerveza Corona Extra six.jpg"),
     ("Cerveza Pilsener (355 mL) u", 1.75, 1.36, 36, "Cerveza Pilsener (355 mL) u.jpg"),
@@ -230,52 +242,37 @@ def init_db():
         except Exception:
             conn.rollback()
 
-        # LIMPIEZA DE ENSAYOS VIEJOS
-        try:
-            cursor.execute("DELETE FROM historial_ventas")
-            cursor.execute("DELETE FROM compras_facturas")
-            cursor.execute("UPDATE productos SET ventas = 0")
-            conn.commit()
-        except Exception:
-            conn.rollback()
-
-        # BASE EXACTA
         bases = [
             ('hoy', 0.00),
             ('mes', 386.00),
-            ('facturas', 205.24), # $93 + $112.24
+            ('facturas', 205.24),
             ('ganancia', 110.85)
         ]
         for c, v in bases:
             try:
                 if DB_URL:
-                    cursor.execute("INSERT INTO bases_manuales (clave, valor) VALUES (%s, %s) ON CONFLICT (clave) DO UPDATE SET valor = EXCLUDED.valor", (c, v))
+                    cursor.execute("INSERT INTO bases_manuales (clave, valor) VALUES (%s, %s) ON CONFLICT (clave) DO NOTHING", (c, v))
                 else:
-                    cursor.execute("INSERT OR REPLACE INTO bases_manuales (clave, valor) VALUES (?, ?)", (c, v))
+                    cursor.execute("INSERT OR IGNORE INTO bases_manuales (clave, valor) VALUES (?, ?)", (c, v))
                 conn.commit()
             except Exception:
                 conn.rollback()
 
-        cursor.execute("SELECT COUNT(*) FROM productos")
-        res = cursor.fetchone()
-        
-        count = 0
-        if isinstance(res, dict):
-            count = list(res.values())[0]
-        elif isinstance(res, (tuple, list)):
-            count = res[0]
-
-        if count == 0:
-            for p in PRODUCTOS_FACTURA:
-                q = '''
+        # Insertar productos nuevos si no existen
+        for p in PRODUCTOS_FACTURA:
+            nombre, precio, costo, stock, img = p
+            q_check = 'SELECT id FROM productos WHERE LOWER(nombre) = LOWER(%s)' if DB_URL else 'SELECT id FROM productos WHERE LOWER(nombre) = LOWER(?)'
+            cursor.execute(q_check, (nombre,))
+            if not cursor.fetchone():
+                q_ins = '''
                     INSERT INTO productos (nombre, precio, costo, stock, ventas, imagen)
                     VALUES (%s, %s, %s, %s, 0, %s)
                 ''' if DB_URL else '''
                     INSERT INTO productos (nombre, precio, costo, stock, ventas, imagen)
                     VALUES (?, ?, ?, ?, 0, ?)
                 '''
-                cursor.execute(q, p)
-            conn.commit()
+                cursor.execute(q_ins, p)
+        conn.commit()
 
         conn.close()
     except Exception as e:
@@ -397,7 +394,6 @@ def resumen_ventas():
         base_facturas = bm.get('facturas', 205.24)
         base_ganancia = bm.get('ganancia', 110.85)
 
-        # Ventas nuevas desde las 12:00 AM
         ventas_hoy_reales = 0.0
         try:
             q_hoy = "SELECT COALESCE(SUM(monto), 0) FROM historial_ventas WHERE fecha_sv = %s" if DB_URL else "SELECT COALESCE(SUM(monto), 0) FROM historial_ventas WHERE fecha_sv = ?"
@@ -446,7 +442,7 @@ def resumen_ventas():
         total_facturas = base_facturas + compras_nuevas
         ganancia_real = base_ganancia + ganancia_nuevas
         
-        # FÓRMULA DE CAJA REINVERSIÓN REAL: Ventas Mes - Compras Facturas - Ganancia Real
+        # FÓRMULA DE REINVERSIÓN: Ventas Mes - Compras Facturas - Ganancia Real
         capital_libre_reinversion = total_mes - total_facturas - ganancia_real
 
         return jsonify({
