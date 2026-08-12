@@ -29,6 +29,10 @@ def get_db():
         return conn
 
 MAPA_IMAGENES = {
+    "lays crema y especias": "Lays crema y especias.jpg",
+    "Lays crema y especias": "Lays crema y especias.jpg",
+    "Coca-Cola zero Lata": "coca coloa zero.jpg",
+    "coca-cola zero lata": "coca coloa zero.jpg",
     "Pingüinos Cookies & Cream (80g)": "pinguinos cookies 80gr.jpg",
     "Pingüinos Clásicos (80g)": "pinguinos 80gr.jpg",
     "Gansito Marinela (50g)": "gansito 50 gr.jpg",
@@ -98,6 +102,8 @@ MAPA_IMAGENES = {
 }
 
 PRODUCTOS_FACTURA = [
+    ("lays crema y especias", 2.00, 1.50, 6, "Lays crema y especias.jpg"),
+    ("Coca-Cola zero Lata", 1.20, 0.85, 10, "coca coloa zero.jpg"),
     ("Pingüinos Cookies & Cream (80g)", 1.25, 0.85, 6, "pinguinos cookies 80gr.jpg"),
     ("Pingüinos Clásicos (80g)", 1.25, 0.85, 6, "pinguinos 80gr.jpg"),
     ("Gansito Marinela (50g)", 1.00, 0.65, 6, "gansito 50 gr.jpg"),
@@ -258,12 +264,13 @@ def init_db():
             except Exception:
                 conn.rollback()
 
-        # Insertar productos nuevos si no existen
+        # Insertar productos si no existen y vincular imágenes
         for p in PRODUCTOS_FACTURA:
             nombre, precio, costo, stock, img = p
             q_check = 'SELECT id FROM productos WHERE LOWER(nombre) = LOWER(%s)' if DB_URL else 'SELECT id FROM productos WHERE LOWER(nombre) = LOWER(?)'
             cursor.execute(q_check, (nombre,))
-            if not cursor.fetchone():
+            f = cursor.fetchone()
+            if not f:
                 q_ins = '''
                     INSERT INTO productos (nombre, precio, costo, stock, ventas, imagen)
                     VALUES (%s, %s, %s, %s, 0, %s)
@@ -272,8 +279,18 @@ def init_db():
                     VALUES (?, ?, ?, ?, 0, ?)
                 '''
                 cursor.execute(q_ins, p)
-        conn.commit()
+            else:
+                # Actualizar imagen si la tiene en blanco/defecto
+                pid = f['id'] if isinstance(f, dict) else f[0]
+                q_upd_img = 'UPDATE productos SET imagen = %s WHERE id = %s' if DB_URL else 'UPDATE productos SET imagen = ? WHERE id = ?'
+                cursor.execute(q_upd_img, (img, pid))
 
+        # Auto-vincular todas las imágenes del diccionario
+        for nombre_prod, img_file in MAPA_IMAGENES.items():
+            q_auto = 'UPDATE productos SET imagen = %s WHERE LOWER(nombre) = LOWER(%s)' if DB_URL else 'UPDATE productos SET imagen = ? WHERE LOWER(nombre) = LOWER(?)'
+            cursor.execute(q_auto, (img_file, nombre_prod))
+
+        conn.commit()
         conn.close()
     except Exception as e:
         print("Error en init_db:", e)
@@ -286,6 +303,20 @@ def allowed_file(filename):
 @app.route('/')
 def index():
     return render_template('index.html')
+
+@app.route('/api/revincular-imagenes', methods=['POST'])
+def revincular_imagenes():
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        for nombre_prod, img_file in MAPA_IMAGENES.items():
+            q = 'UPDATE productos SET imagen = %s WHERE LOWER(nombre) = LOWER(%s)' if DB_URL else 'UPDATE productos SET imagen = ? WHERE LOWER(nombre) = LOWER(?)'
+            cursor.execute(q, (img_file, nombre_prod))
+        conn.commit()
+        conn.close()
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
 
 @app.route('/api/productos', methods=['GET'])
 def get_productos():
@@ -340,6 +371,26 @@ def guardar_producto():
         return jsonify({"success": True})
     except Exception as e:
         print("Error al guardar producto:", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/producto/eliminar/<int:id>', methods=['DELETE', 'POST'])
+def eliminar_producto(id):
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        
+        # Desvincular de historial_ventas para no romper clave foránea
+        q_hist = 'UPDATE historial_ventas SET producto_id = NULL WHERE producto_id = %s' if DB_URL else 'UPDATE historial_ventas SET producto_id = NULL WHERE producto_id = ?'
+        cursor.execute(q_hist, (id,))
+        
+        q_del = 'DELETE FROM productos WHERE id = %s' if DB_URL else 'DELETE FROM productos WHERE id = ?'
+        cursor.execute(q_del, (id,))
+        
+        conn.commit()
+        conn.close()
+        return jsonify({"success": True})
+    except Exception as e:
+        print("Error en eliminar_producto:", e)
         return jsonify({"success": False, "error": str(e)}), 500
 
 @app.route('/api/actualizar-bases-manuales', methods=['POST'])
@@ -441,8 +492,6 @@ def resumen_ventas():
         total_mes = base_mes + ventas_mes_reales
         total_facturas = base_facturas + compras_nuevas
         ganancia_real = base_ganancia + ganancia_nuevas
-        
-        # FÓRMULA DE REINVERSIÓN: Ventas Mes - Compras Facturas - Ganancia Real
         capital_libre_reinversion = total_mes - total_facturas - ganancia_real
 
         return jsonify({
