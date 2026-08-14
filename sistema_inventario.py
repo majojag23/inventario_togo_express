@@ -30,9 +30,7 @@ def get_db():
 
 MAPA_IMAGENES = {
     "lays crema y especias": "Lays crema y especias.jpg",
-    "Lays crema y especias": "Lays crema y especias.jpg",
     "Coca-Cola zero Lata": "coca coloa zero.jpg",
-    "coca-cola zero lata": "coca coloa zero.jpg",
     "Pingüinos Cookies & Cream (80g)": "pinguinos cookies 80gr.jpg",
     "Pingüinos Clásicos (80g)": "pinguinos 80gr.jpg",
     "Gansito Marinela (50g)": "gansito 50 gr.jpg",
@@ -60,7 +58,6 @@ MAPA_IMAGENES = {
     "Papas Lays con Sal": "Papas Lays con Sal.jpg",
     "LAYS BARBACOA 80 GR": "LAYS BARBACOA 80 GR.jpg",
     "Lays Flamin Hot": "lays flaming hot.jpg",
-    "Lays Flaming Hot": "lays flaming hot.jpg",
     "CHURRITOS PEQUE": "CHURRITOS PEQUE.jpg",
     "CHETOOS": "CHETOOS.jpg",
     "NOCHOS 150": "NOCHOS 150.jpg",
@@ -78,11 +75,8 @@ MAPA_IMAGENES = {
     "paleta yogurtt banano": "paleta_banano.jpeg",
     "paleta yogurtt fresa": "paleta_fresa.jpeg",
     "paleta palikakao": "paleta palikakao.jpg",
-    "Paleta Palikakao": "paleta palikakao.jpg",
     "Maruchan carne": "Maruchan carne.jpg",
-    "Maruchan Sabor Carne": "Maruchan carne.jpg",
     "Maruchan pollo": "Maruchan pollo.jpg",
-    "Maruchan Sabor Pollo": "Maruchan pollo.jpg",
     "MALBORO GOLD": "MALBORO GOLD.jpg",
     "MALBORO VISTA / FOREST": "MALBORO VISTA.jpg",
     "PALLMALL": "PALLMALL.jpg",
@@ -248,49 +242,58 @@ def init_db():
         except Exception:
             conn.rollback()
 
-        bases = [
-            ('hoy', 0.00),
-            ('mes', 386.00),
-            ('facturas', 205.24),
-            ('ganancia', 110.85)
-        ]
-        for c, v in bases:
-            try:
-                if DB_URL:
-                    cursor.execute("INSERT INTO bases_manuales (clave, valor) VALUES (%s, %s) ON CONFLICT (clave) DO NOTHING", (c, v))
-                else:
-                    cursor.execute("INSERT OR IGNORE INTO bases_manuales (clave, valor) VALUES (?, ?)", (c, v))
-                conn.commit()
-            except Exception:
-                conn.rollback()
+        # DEDUPLICAR PRODUCTOS
+        try:
+            if DB_URL:
+                cursor.execute('''
+                    DELETE FROM productos p1
+                    USING productos p2
+                    WHERE LOWER(TRIM(p1.nombre)) = LOWER(TRIM(p2.nombre))
+                      AND p1.id > p2.id;
+                ''')
+            else:
+                cursor.execute('''
+                    DELETE FROM productos
+                    WHERE id NOT IN (
+                        SELECT MIN(id)
+                        FROM productos
+                        GROUP BY LOWER(TRIM(nombre))
+                    );
+                ''')
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
 
-        # Insertar productos si no existen y vincular imágenes
-        for p in PRODUCTOS_FACTURA:
-            nombre, precio, costo, stock, img = p
-            q_check = 'SELECT id FROM productos WHERE LOWER(nombre) = LOWER(%s)' if DB_URL else 'SELECT id FROM productos WHERE LOWER(nombre) = LOWER(?)'
-            cursor.execute(q_check, (nombre,))
-            f = cursor.fetchone()
-            if not f:
-                q_ins = '''
+        # INSERCIÓN ÚNICA INICIAL
+        cursor.execute("SELECT COUNT(*) FROM productos")
+        res = cursor.fetchone()
+        count = 0
+        if isinstance(res, dict):
+            count = list(res.values())[0]
+        elif isinstance(res, (tuple, list)):
+            count = res[0]
+
+        if count == 0:
+            for p in PRODUCTOS_FACTURA:
+                q = '''
                     INSERT INTO productos (nombre, precio, costo, stock, ventas, imagen)
                     VALUES (%s, %s, %s, %s, 0, %s)
                 ''' if DB_URL else '''
                     INSERT INTO productos (nombre, precio, costo, stock, ventas, imagen)
                     VALUES (?, ?, ?, ?, 0, ?)
                 '''
-                cursor.execute(q_ins, p)
-            else:
-                # Actualizar imagen si la tiene en blanco/defecto
-                pid = f['id'] if isinstance(f, dict) else f[0]
-                q_upd_img = 'UPDATE productos SET imagen = %s WHERE id = %s' if DB_URL else 'UPDATE productos SET imagen = ? WHERE id = ?'
-                cursor.execute(q_upd_img, (img, pid))
+                cursor.execute(q, p)
+            conn.commit()
 
-        # Auto-vincular todas las imágenes del diccionario
+        # VINCULAR IMÁGENES
         for nombre_prod, img_file in MAPA_IMAGENES.items():
-            q_auto = 'UPDATE productos SET imagen = %s WHERE LOWER(nombre) = LOWER(%s)' if DB_URL else 'UPDATE productos SET imagen = ? WHERE LOWER(nombre) = LOWER(?)'
-            cursor.execute(q_auto, (img_file, nombre_prod))
+            try:
+                q_auto = 'UPDATE productos SET imagen = %s WHERE LOWER(TRIM(nombre)) = LOWER(TRIM(%s))' if DB_URL else 'UPDATE productos SET imagen = ? WHERE LOWER(TRIM(nombre)) = LOWER(TRIM(?))'
+                cursor.execute(q_auto, (img_file, nombre_prod))
+                conn.commit()
+            except Exception:
+                conn.rollback()
 
-        conn.commit()
         conn.close()
     except Exception as e:
         print("Error en init_db:", e)
@@ -303,20 +306,6 @@ def allowed_file(filename):
 @app.route('/')
 def index():
     return render_template('index.html')
-
-@app.route('/api/revincular-imagenes', methods=['POST'])
-def revincular_imagenes():
-    try:
-        conn = get_db()
-        cursor = conn.cursor()
-        for nombre_prod, img_file in MAPA_IMAGENES.items():
-            q = 'UPDATE productos SET imagen = %s WHERE LOWER(nombre) = LOWER(%s)' if DB_URL else 'UPDATE productos SET imagen = ? WHERE LOWER(nombre) = LOWER(?)'
-            cursor.execute(q, (img_file, nombre_prod))
-        conn.commit()
-        conn.close()
-        return jsonify({"success": True})
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
 
 @app.route('/api/productos', methods=['GET'])
 def get_productos():
@@ -378,8 +367,6 @@ def eliminar_producto(id):
     try:
         conn = get_db()
         cursor = conn.cursor()
-        
-        # Desvincular de historial_ventas para no romper clave foránea
         q_hist = 'UPDATE historial_ventas SET producto_id = NULL WHERE producto_id = %s' if DB_URL else 'UPDATE historial_ventas SET producto_id = NULL WHERE producto_id = ?'
         cursor.execute(q_hist, (id,))
         
@@ -616,13 +603,15 @@ def detalle_historial(tipo):
     if tipo == 'hoy':
         try:
             q = '''
-                SELECT h.id, COALESCE(p.nombre, 'Venta') as producto, h.monto, h.fecha 
+                SELECT h.id, COALESCE(p.nombre, 'Venta / Registro') as producto,
+                       h.monto as precio, COALESCE(p.costo, 0) as costo, h.fecha 
                 FROM historial_ventas h 
                 LEFT JOIN productos p ON h.producto_id = p.id 
                 WHERE h.fecha_sv = %s
                 ORDER BY h.fecha DESC
             ''' if DB_URL else '''
-                SELECT h.id, COALESCE(p.nombre, 'Venta') as producto, h.monto, h.fecha 
+                SELECT h.id, COALESCE(p.nombre, 'Venta / Registro') as producto,
+                       h.monto as precio, COALESCE(p.costo, 0) as costo, h.fecha 
                 FROM historial_ventas h 
                 LEFT JOIN productos p ON h.producto_id = p.id 
                 WHERE h.fecha_sv = ?
@@ -631,10 +620,11 @@ def detalle_historial(tipo):
             cursor.execute(q, (hoy_str,))
         except Exception:
             conn.rollback()
-            cursor.execute("SELECT h.id, COALESCE(p.nombre, 'Venta') as producto, h.monto, h.fecha FROM historial_ventas h LEFT JOIN productos p ON h.producto_id = p.id ORDER BY h.fecha DESC")
+            cursor.execute("SELECT h.id, COALESCE(p.nombre, 'Venta') as producto, h.monto as precio, COALESCE(p.costo, 0) as costo, h.fecha FROM historial_ventas h LEFT JOIN productos p ON h.producto_id = p.id ORDER BY h.fecha DESC")
     else:
         q = '''
-            SELECT h.id, COALESCE(p.nombre, 'Venta') as producto, h.monto, h.fecha 
+            SELECT h.id, COALESCE(p.nombre, 'Venta / Registro') as producto,
+                   h.monto as precio, COALESCE(p.costo, 0) as costo, h.fecha 
             FROM historial_ventas h 
             LEFT JOIN productos p ON h.producto_id = p.id 
             ORDER BY h.fecha DESC
@@ -646,7 +636,15 @@ def detalle_historial(tipo):
     res = []
     for f in filas:
         d = dict(f)
-        d['monto'] = float(d['monto'])
+        precio = float(d.get('precio', 0) or 0)
+        costo = float(d.get('costo', 0) or 0)
+        if precio < 0:
+            ganancia = precio + costo
+        else:
+            ganancia = precio - costo if precio > 0 else 0.0
+
+        d['monto'] = precio
+        d['ganancia'] = ganancia
         if isinstance(d['fecha'], datetime):
             d['fecha'] = d['fecha'].strftime('%Y-%m-%d %H:%M:%S')
         else:
