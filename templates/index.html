@@ -248,15 +248,15 @@
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
+                    <!-- Banner de resumen para ventas de hoy -->
+                    <div id="resumen-dia-banner" class="alert alert-info d-none d-flex flex-wrap justify-content-around align-items-center fw-bold fs-6 mb-3 rounded-3 shadow-sm border-0" style="background-color: #e0f2fe; color: #0369a1;">
+                        <div>🛒 Total Ventas Hoy: <span id="total-ventas-modal" class="text-primary fw-extrabold">$0.00</span></div>
+                        <div>📈 Ganancia Limpia Hoy: <span id="total-ganancia-modal" class="text-success fw-extrabold">$0.00</span></div>
+                    </div>
+
                     <div class="table-responsive">
                         <table class="table table-striped align-middle">
-                            <thead class="table-dark">
-                                <tr>
-                                    <th>Fecha y Hora</th>
-                                    <th>Detalle / Concepto</th>
-                                    <th class="text-end">Monto</th>
-                                </tr>
-                            </thead>
+                            <thead class="table-dark" id="thead-historial"></thead>
                             <tbody id="tbody-historial"></tbody>
                         </table>
                     </div>
@@ -358,10 +358,10 @@
         }
 
         function abrirModalBases() {
-            document.getElementById('base-hoy').value = datosResumen.base_hoy !== undefined ? datosResumen.base_hoy : 21.10;
-            document.getElementById('base-mes').value = datosResumen.base_mes !== undefined ? datosResumen.base_mes : 312.85;
-            document.getElementById('base-facturas').value = datosResumen.base_facturas !== undefined ? datosResumen.base_facturas : 93.00;
-            document.getElementById('base-ganancia').value = datosResumen.base_ganancia !== undefined ? datosResumen.base_ganancia : 89.00;
+            document.getElementById('base-hoy').value = datosResumen.base_hoy !== undefined ? datosResumen.base_hoy : 0.00;
+            document.getElementById('base-mes').value = datosResumen.base_mes !== undefined ? datosResumen.base_mes : 386.00;
+            document.getElementById('base-facturas').value = datosResumen.base_facturas !== undefined ? datosResumen.base_facturas : 205.24;
+            document.getElementById('base-ganancia').value = datosResumen.base_ganancia !== undefined ? datosResumen.base_ganancia : 110.85;
             modalBasesObj.show();
         }
 
@@ -388,34 +388,100 @@
         };
 
         async function verHistorial(tipo) {
-            document.getElementById('historialTitulo').innerText = tipo === 'hoy' ? '📋 Detalle de Ventas de Hoy' : '📋 Detalle de Ventas del Mes';
+            const banner = document.getElementById('resumen-dia-banner');
+            const thead = document.getElementById('thead-historial');
+
+            if (tipo === 'hoy') {
+                document.getElementById('historialTitulo').innerText = '📋 Detalle de Ventas y Ganancias de Hoy';
+                banner.classList.remove('d-none');
+                thead.innerHTML = `
+                    <tr>
+                        <th>Hora</th>
+                        <th>Producto</th>
+                        <th class="text-end">Precio Venta</th>
+                        <th class="text-end">Ganancia</th>
+                    </tr>
+                `;
+            } else {
+                document.getElementById('historialTitulo').innerText = '📋 Detalle de Ventas del Mes';
+                banner.classList.add('d-none');
+                thead.innerHTML = `
+                    <tr>
+                        <th>Fecha y Hora</th>
+                        <th>Detalle / Concepto</th>
+                        <th class="text-end">Monto</th>
+                    </tr>
+                `;
+            }
+
             const res = await fetch(`/api/historial-ventas/${tipo}`);
             if (res.ok) {
                 const lista = await res.json();
                 const tbody = document.getElementById('tbody-historial');
                 tbody.innerHTML = '';
+
+                let sumaVentas = 0;
+                let sumaGanancia = 0;
+
                 if (lista.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">No hay registros aún.</td></tr>';
+                    tbody.innerHTML = `<tr><td colspan="${tipo === 'hoy' ? 4 : 3}" class="text-center text-muted">No hay registros para este periodo.</td></tr>`;
                 } else {
                     lista.forEach(item => {
-                        const esDev = item.monto < 0;
-                        tbody.innerHTML += `
-                            <tr>
-                                <td><small class="text-muted">${item.fecha}</small></td>
-                                <td class="fw-bold">${item.producto}</td>
-                                <td class="text-end fw-bold ${esDev ? 'text-danger' : 'text-success'}">
-                                    $${item.monto.toFixed(2)}
-                                </td>
-                            </tr>
-                        `;
+                        const montoCobrado = item.monto !== undefined ? item.monto : (item.precio || 0);
+                        const gananciaLimpia = item.ganancia !== undefined ? item.ganancia : 0;
+                        const esDev = montoCobrado < 0;
+
+                        sumaVentas += montoCobrado;
+                        sumaGanancia += gananciaLimpia;
+
+                        if (tipo === 'hoy') {
+                            const horaSolo = item.fecha && item.fecha.includes(' ') ? item.fecha.split(' ')[1] : (item.fecha || '');
+                            tbody.innerHTML += `
+                                <tr>
+                                    <td><small class="text-muted fw-bold">${horaSolo}</small></td>
+                                    <td class="fw-bold">${item.producto}</td>
+                                    <td class="text-end fw-bold ${esDev ? 'text-danger' : 'text-primary'}">
+                                        $${montoCobrado.toFixed(2)}
+                                    </td>
+                                    <td class="text-end fw-bold ${esDev ? 'text-danger' : 'text-success'}">
+                                        ${gananciaLimpia < 0 ? '-' : '+'}$${Math.abs(gananciaLimpia).toFixed(2)}
+                                    </td>
+                                </tr>
+                            `;
+                        } else {
+                            tbody.innerHTML += `
+                                <tr>
+                                    <td><small class="text-muted">${item.fecha}</small></td>
+                                    <td class="fw-bold">${item.producto}</td>
+                                    <td class="text-end fw-bold ${esDev ? 'text-danger' : 'text-success'}">
+                                        $${montoCobrado.toFixed(2)}
+                                    </td>
+                                </tr>
+                            `;
+                        }
                     });
                 }
+
+                if (tipo === 'hoy') {
+                    document.getElementById('total-ventas-modal').innerText = `$${sumaVentas.toFixed(2)}`;
+                    document.getElementById('total-ganancia-modal').innerText = `$${sumaGanancia.toFixed(2)}`;
+                }
+
                 modalHistorialObj.show();
             }
         }
 
         async function verHistorialCompras() {
+            document.getElementById('resumen-dia-banner').classList.add('d-none');
             document.getElementById('historialTitulo').innerText = '🧾 Detalle de Facturas y Compras del Mes';
+            document.getElementById('thead-historial').innerHTML = `
+                <tr>
+                    <th>Fecha y Hora</th>
+                    <th>Detalle / Concepto</th>
+                    <th class="text-end">Monto</th>
+                </tr>
+            `;
+
             const res = await fetch('/api/historial-compras');
             if (res.ok) {
                 const lista = await res.json();
