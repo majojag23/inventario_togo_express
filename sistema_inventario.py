@@ -216,7 +216,7 @@ def init_db():
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 concepto TEXT NOT NULL,
                 monto REAL NOT NULL,
-                fecha DATETIME DEFAULT CURRENT_TIMESTAMP
+                fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
 
@@ -242,29 +242,22 @@ def init_db():
         except Exception:
             conn.rollback()
 
-        # DEDUPLICAR PRODUCTOS
-        try:
-            if DB_URL:
-                cursor.execute('''
-                    DELETE FROM productos p1
-                    USING productos p2
-                    WHERE LOWER(TRIM(p1.nombre)) = LOWER(TRIM(p2.nombre))
-                      AND p1.id > p2.id;
-                ''')
-            else:
-                cursor.execute('''
-                    DELETE FROM productos
-                    WHERE id NOT IN (
-                        SELECT MIN(id)
-                        FROM productos
-                        GROUP BY LOWER(TRIM(nombre))
-                    );
-                ''')
-            conn.commit()
-        except Exception as e:
-            conn.rollback()
+        bases = [
+            ('hoy', 0.00),
+            ('mes', 386.00),
+            ('facturas', 205.24),
+            ('ganancia', 110.85)
+        ]
+        for c, v in bases:
+            try:
+                if DB_URL:
+                    cursor.execute("INSERT INTO bases_manuales (clave, valor) VALUES (%s, %s) ON CONFLICT (clave) DO NOTHING", (c, v))
+                else:
+                    cursor.execute("INSERT OR IGNORE INTO bases_manuales (clave, valor) VALUES (?, ?)", (c, v))
+                conn.commit()
+            except Exception:
+                conn.rollback()
 
-        # INSERCIÓN ÚNICA INICIAL
         cursor.execute("SELECT COUNT(*) FROM productos")
         res = cursor.fetchone()
         count = 0
@@ -285,7 +278,6 @@ def init_db():
                 cursor.execute(q, p)
             conn.commit()
 
-        # VINCULAR IMÁGENES
         for nombre_prod, img_file in MAPA_IMAGENES.items():
             try:
                 q_auto = 'UPDATE productos SET imagen = %s WHERE LOWER(TRIM(nombre)) = LOWER(TRIM(%s))' if DB_URL else 'UPDATE productos SET imagen = ? WHERE LOWER(TRIM(nombre)) = LOWER(TRIM(?))'
@@ -638,10 +630,12 @@ def detalle_historial(tipo):
         d = dict(f)
         precio = float(d.get('precio', 0) or 0)
         costo = float(d.get('costo', 0) or 0)
+        
+        # Cálculo de ganancia
         if precio < 0:
             ganancia = precio + costo
         else:
-            ganancia = precio - costo if precio > 0 else 0.0
+            ganancia = (precio - costo) if precio > 0 else 0.0
 
         d['monto'] = precio
         d['ganancia'] = ganancia
