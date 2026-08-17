@@ -28,8 +28,7 @@ def get_db():
         conn.row_factory = sqlite3.Row
         return conn
 
-# Mapeo flexible de palabras clave a nombres exactos de archivo en GitHub
-MAPA_IMAGENES_FORZADO = [
+MAPA_IMAGENES_EXACTO = [
     ("golden grande", "golden grande.jpg"),
     ("golden six pack grande", "golden six pack grande.png"),
     ("golden 355", "golden 355 ml.jpg"),
@@ -50,17 +49,6 @@ MAPA_IMAGENES_FORZADO = [
     ("choco wow", "galletas chocowow.jpg"),
     ("triple chocolate", "pinguinos triple chocolate  80gr.jpg"),
     ("fresa crush", "pinguinos fresa  80gr.jpg")
-]
-
-PAREJAS_CERVEZA = [
-    ("Cerveza Golden Grande Six Pack", "Cerveza Golden Grande (473 mL) u"),
-    ("Cerveza Golden Pequeña Six Pack", "Cerveza Golden Pequeña (355 mL) u"),
-    ("Cerveza Regia Grande Six Pack", "Cerveza Regia Grande (473 mL) u"),
-    ("Cerveza Regia Pequeña Six Pack", "Cerveza Regia Pequeña (355 mL) u"),
-    ("Cerveza Pilsener (355 mL) six", "Cerveza Pilsener (355 mL) u"),
-    ("Cerveza Pilsener (473 mL) six paq", "Cerveza Pilsener (473ml)"),
-    ("Cerveza Corona Extra six", "Cerveza Corona Extra (330 mL)"),
-    ("Cerveza Suprema six", "Cerveza Suprema (330 mL) u")
 ]
 
 def init_db():
@@ -136,30 +124,6 @@ def init_db():
             )
         ''')
         conn.commit()
-
-        try:
-            if DB_URL:
-                cursor.execute("ALTER TABLE historial_ventas ADD COLUMN fecha_sv VARCHAR(50);")
-            else:
-                cursor.execute("ALTER TABLE historial_ventas ADD COLUMN fecha_sv TEXT;")
-            conn.commit()
-        except Exception:
-            conn.rollback()
-
-        # VINCULACIÓN FORZADA EN BASE DE DATOS
-        cursor.execute("SELECT id, nombre FROM productos")
-        prods = cursor.fetchall()
-        for p in prods:
-            pid = p['id'] if isinstance(p, dict) else p[0]
-            pnombre = (p['nombre'] if isinstance(p, dict) else p[1]).lower()
-            
-            for clave, archivo in MAPA_IMAGENES_FORZADO:
-                if clave in pnombre:
-                    q_upd = "UPDATE productos SET imagen = %s WHERE id = %s" if DB_URL else "UPDATE productos SET imagen = ? WHERE id = ?"
-                    cursor.execute(q_upd, (archivo, pid))
-                    conn.commit()
-                    break
-
         conn.close()
     except Exception as e:
         print("Error en init_db:", e)
@@ -172,6 +136,32 @@ def allowed_file(filename):
 @app.route('/')
 def index():
     return render_template('index.html')
+
+@app.route('/api/forzar-vinculacion', methods=['POST'])
+def forzar_vinculacion():
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, nombre FROM productos")
+        prods = cursor.fetchall()
+        
+        actualizados = 0
+        for p in prods:
+            pid = p['id'] if isinstance(p, dict) else p[0]
+            pnombre = (p['nombre'] if isinstance(p, dict) else p[1]).lower().strip()
+            
+            for clave, archivo in MAPA_IMAGENES_EXACTO:
+                if clave in pnombre:
+                    q_upd = "UPDATE productos SET imagen = %s WHERE id = %s" if DB_URL else "UPDATE productos SET imagen = ? WHERE id = ?"
+                    cursor.execute(q_upd, (archivo, pid))
+                    actualizados += 1
+                    break
+                    
+        conn.commit()
+        conn.close()
+        return jsonify({"success": True, "actualizados": actualizados})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
 
 @app.route('/api/productos', methods=['GET'])
 def get_productos():
