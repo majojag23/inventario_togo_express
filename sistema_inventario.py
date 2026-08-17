@@ -29,6 +29,20 @@ def get_db():
         return conn
 
 MAPA_IMAGENES = {
+    # Nuevos productos
+    "Cerveza Golden Grande (473 mL) u": "golden grande.jpg",
+    "Cerveza Golden Grande Six Pack": "golden six pack grande.png",
+    "Cerveza Golden Pequeña (355 mL) u": "golden 355 ml.jpg",
+    "Cerveza Golden Pequeña Six Pack": "golden six pack pequeño.png",
+    "Cerveza Regia Grande (473 mL) u": "regia extra grande.png",
+    "Cerveza Regia Grande Six Pack": "regia six paq grande.png",
+    "Cerveza Regia Pequeña (355 mL) u": "regia pequeña.png",
+    "Cerveza Regia Pequeña Six Pack": "regia six paq pequeña.png",
+    "Gaseosa Mirinda Naranja": "Gaseosairinda Naranja.png",
+    "Gaseosa Tropical Fresa": "gaseosa tropical fresa.png",
+    "Gaseosa Tropical Uva": "gaseosa tropical uva.png",
+    
+    # Existentes
     "lays crema y especias": "Lays crema y especias.jpg",
     "Coca-Cola zero Lata": "coca coloa zero.jpg",
     "Pingüinos Cookies & Cream (80g)": "pinguinos cookies 80gr.jpg",
@@ -95,68 +109,30 @@ MAPA_IMAGENES = {
     "agua": "agua alpina.jpg"
 }
 
-PRODUCTOS_FACTURA = [
-    ("lays crema y especias", 2.00, 1.50, 6, "Lays crema y especias.jpg"),
-    ("Coca-Cola zero Lata", 1.20, 0.85, 10, "coca coloa zero.jpg"),
-    ("Pingüinos Cookies & Cream (80g)", 1.25, 0.85, 6, "pinguinos cookies 80gr.jpg"),
-    ("Pingüinos Clásicos (80g)", 1.25, 0.85, 6, "pinguinos 80gr.jpg"),
-    ("Gansito Marinela (50g)", 1.00, 0.65, 6, "gansito 50 gr.jpg"),
-    ("Galletas Choco Wow Chispas", 0.60, 0.40, 10, "galletas chocowow.jpg"),
-    ("Pingüinos Triple Chocolate (80g)", 1.25, 0.85, 6, "pinguinos triple chocolate  80gr.jpg"),
-    ("Pingüinos Fresa Crush (80g)", 1.25, 0.85, 6, "pinguinos fresa  80gr.jpg"),
-    ("Cerveza Corona Extra (330 mL)", 2.25, 1.65, 24, "Cerveza Corona Extra (330 mL).jpg"),
-    ("Cerveza Corona Extra six", 12.50, 9.90, 4, "Cerveza Corona Extra six.jpg"),
-    ("Cerveza Pilsener (355 mL) u", 1.75, 1.36, 36, "Cerveza Pilsener (355 mL) u.jpg"),
-    ("Cerveza Pilsener (355 mL) six", 9.75, 8.15, 6, "Cerveza Pilsener (355 mL).jpg"),
-    ("Cerveza Pilsener (473ml)", 2.50, 1.75, 13, "pilsener (473ml)u.webp"),
-    ("Cerveza Pilsener (473 mL) six paq", 14.00, 9.90, 2, "cerveza pilsener (473ml) six.jpg"),
-    ("Cerveza Suprema (330 mL) u", 1.85, 1.42, 18, "Cerveza Suprema (330 mL).jpg"),
-    ("Cerveza Suprema six", 10.25, 8.50, 3, "SUPREMA SIX.jpg"),
-    ("Coca-Cola 2.5 L", 2.95, 2.13, 6, "Coca-Cola 2.5 L.jpg"),
-    ("Coca-Cola Litro", 1.75, 1.30, 6, "Coca-Cola Litro.jpg"),
-    ("Coca-Cola Personal", 1.65, 1.25, 2, "Coca-Cola Personal.jpg"),
-    ("Coca-Cola zero 1.25", 1.85, 1.30, 2, "Coca-Cola zero 1.25.jpg"),
-    ("Coca-Cola 1.25", 2.10, 1.50, 6, "coca cola 1.25.jpg"),
-    ("del valle 2.5", 1.75, 1.30, 4, "del valle 2.5.jpg"),
-    ("Doritos Extra Queso", 2.15, 1.63, 2, "Doritos Extra Queso.jpg"),
-    ("Doritos NACHO", 2.15, 1.63, 2, "Doritos NACHO.jpg"),
-    ("Papas Lays con Sal", 2.60, 1.96, 3, "Papas Lays con Sal.jpg"),
-    ("LAYS BARBACOA 80 GR", 2.10, 1.57, 1, "LAYS BARBACOA 80 GR.jpg"),
-    ("Lays Flamin Hot", 2.10, 1.57, 6, "lays flaming hot.jpg"),
-    ("CHURRITOS PEQUE", 0.75, 0.51, 3, "CHURRITOS PEQUE.jpg"),
-    ("CHETOOS", 0.75, 0.51, 3, "CHETOOS.jpg"),
-    ("NOCHOS 150", 1.65, 1.20, 2, "NOCHOS 150.jpg"),
-    ("JALAPEÑO 150", 1.65, 1.20, 2, "JALAPEÑO 150.jpg"),
-    ("Semillas Surtidas", 3.85, 2.95, 2, "semillas.jpg"),
-    ("LECHE ENTERA", 1.95, 1.50, 2, "LECHE ENTERA.jpg"),
-    ("LECHE DESLAC", 1.65, 1.25, 3, "LECHE DESLAC.jpg"),
-    ("paleta Nevería capuchino", 1.00, 0.60, 6, "paleta_capuchino.jpeg"),
-    ("paleta Nevería napolitano", 1.00, 0.60, 6, "paleta_napolitano.jpeg"),
-    ("paleta Nevería naranja", 1.00, 0.60, 6, "paleta_naranjo.jpeg"),
-    ("paleta Nevería neve choc", 1.00, 0.60, 6, "paleta_neve_choc.jpeg"),
-    ("paleta Nevería nevehola", 1.00, 0.60, 6, "paleta_nevehola.jpeg"),
-    ("paleta Nevería sandía", 1.00, 0.60, 6, "paleta_sandia.jpeg"),
-    ("paleta yogur choco maní", 1.00, 0.60, 6, "paleta_mani.jpeg"),
-    ("paleta yogurtt banano", 1.00, 0.60, 6, "paleta_banano.jpeg"),
-    ("paleta yogurtt fresa", 1.00, 0.60, 6, "paleta_fresa.jpeg"),
-    ("paleta palikakao", 1.00, 0.60, 6, "paleta palikakao.jpg"),
-    ("Maruchan carne", 1.25, 0.90, 12, "Maruchan carne.jpg"),
-    ("Maruchan pollo", 1.25, 0.90, 12, "Maruchan pollo.jpg"),
-    ("MALBORO GOLD", 3.75, 2.05, 10, "MALBORO GOLD.jpg"),
-    ("MALBORO VISTA / FOREST", 4.50, 3.50, 10, "MALBORO VISTA.jpg"),
-    ("PALLMALL", 2.50, 1.95, 10, "PALLMALL.jpg"),
-    ("HIELERA NAPOLI CO", 9.99, 7.00, 1, "HIELERA NAPOLI CO.jpg"),
-    ("Hielo Selectos 2", 1.60, 1.15, 2, "Hielo Selectos 2.jpg"),
-    ("ALIMENTO P/PERRO", 4.25, 3.15, 2, "ALIMENTO P/PERRO.jpg"),
-    ("huevos cubeta", 6.00, 4.50, 1, "huevos cubeta.jpg"),
-    ("Rehidratante Elec", 3.10, 2.35, 1, "Rehidratante Elec.jpg"),
-    ("Smirnoff Vodka", 18.99, 12.95, 1, "smirnoff vodka.jpg"),
-    ("Ron Bacardí Blanco", 21.50, 14.60, 1, "Ron Bacardí Blanco.jpg"),
-    ("Ron Bacardí Carta Blanco Oro", 14.50, 9.40, 2, "Ron Bacardí Carta Blanco Oro.jpg"),
-    ("Ron Bacardí Oro 750 ml", 21.00, 14.00, 1, "Ron Bacardí Oro 750 ml.jpg"),
-    ("Ron Bacardí Oro 980 ml", 21.00, 14.00, 1, "Ron Bacardí Oro 750 ml.jpg"),
-    ("Vino Reservado Concha y Toro", 8.99, 5.95, 1, "Vino Reservado Concha y Toro.jpg"),
-    ("agua", 2.00, 1.50, 2, "agua alpina.jpg")
+NUEVOS_PRODUCTOS = [
+    ("Cerveza Golden Grande (473 mL) u", 2.25, 1.60, 6, "golden grande.jpg"),
+    ("Cerveza Golden Grande Six Pack", 12.50, 9.60, 1, "golden six pack grande.png"),
+    ("Cerveza Golden Pequeña (355 mL) u", 1.60, 1.20, 6, "golden 355 ml.jpg"),
+    ("Cerveza Golden Pequeña Six Pack", 9.00, 7.20, 1, "golden six pack pequeño.png"),
+    ("Cerveza Regia Grande (473 mL) u", 2.25, 1.60, 6, "regia extra grande.png"),
+    ("Cerveza Regia Grande Six Pack", 12.50, 9.60, 1, "regia six paq grande.png"),
+    ("Cerveza Regia Pequeña (355 mL) u", 1.60, 1.20, 6, "regia pequeña.png"),
+    ("Cerveza Regia Pequeña Six Pack", 9.00, 7.20, 1, "regia six paq pequeña.png"),
+    ("Gaseosa Mirinda Naranja", 0.75, 0.50, 1, "Gaseosairinda Naranja.png"),
+    ("Gaseosa Tropical Fresa", 0.75, 0.50, 1, "gaseosa tropical fresa.png"),
+    ("Gaseosa Tropical Uva", 0.75, 0.50, 1, "gaseosa tropical uva.png")
+]
+
+# Parejas para resta vinculada entre Six Pack y Unidades
+PAREJAS_CERVEZA = [
+    ("Cerveza Golden Grande Six Pack", "Cerveza Golden Grande (473 mL) u"),
+    ("Cerveza Golden Pequeña Six Pack", "Cerveza Golden Pequeña (355 mL) u"),
+    ("Cerveza Regia Grande Six Pack", "Cerveza Regia Grande (473 mL) u"),
+    ("Cerveza Regia Pequeña Six Pack", "Cerveza Regia Pequeña (355 mL) u"),
+    ("Cerveza Pilsener (355 mL) six", "Cerveza Pilsener (355 mL) u"),
+    ("Cerveza Pilsener (473 mL) six paq", "Cerveza Pilsener (473ml)"),
+    ("Cerveza Corona Extra six", "Cerveza Corona Extra (330 mL)"),
+    ("Cerveza Suprema six", "Cerveza Suprema (330 mL) u")
 ]
 
 def init_db():
@@ -216,7 +192,7 @@ def init_db():
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 concepto TEXT NOT NULL,
                 monto REAL NOT NULL,
-                fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                fecha DATETIME DEFAULT CURRENT_TIMESTAMP
             )
         ''')
 
@@ -242,42 +218,28 @@ def init_db():
         except Exception:
             conn.rollback()
 
-        bases = [
-            ('hoy', 0.00),
-            ('mes', 386.00),
-            ('facturas', 205.24),
-            ('ganancia', 110.85)
-        ]
-        for c, v in bases:
-            try:
-                if DB_URL:
-                    cursor.execute("INSERT INTO bases_manuales (clave, valor) VALUES (%s, %s) ON CONFLICT (clave) DO NOTHING", (c, v))
-                else:
-                    cursor.execute("INSERT OR IGNORE INTO bases_manuales (clave, valor) VALUES (?, ?)", (c, v))
-                conn.commit()
-            except Exception:
-                conn.rollback()
-
-        cursor.execute("SELECT COUNT(*) FROM productos")
-        res = cursor.fetchone()
-        count = 0
-        if isinstance(res, dict):
-            count = list(res.values())[0]
-        elif isinstance(res, (tuple, list)):
-            count = res[0]
-
-        if count == 0:
-            for p in PRODUCTOS_FACTURA:
-                q = '''
+        # Insertar o actualizar nuevos productos sin duplicar
+        for p in NUEVOS_PRODUCTOS:
+            nombre, precio, costo, stock, img = p
+            q_check = 'SELECT id FROM productos WHERE LOWER(TRIM(nombre)) = LOWER(TRIM(%s))' if DB_URL else 'SELECT id FROM productos WHERE LOWER(TRIM(nombre)) = LOWER(TRIM(?))'
+            cursor.execute(q_check, (nombre,))
+            f = cursor.fetchone()
+            if not f:
+                q_ins = '''
                     INSERT INTO productos (nombre, precio, costo, stock, ventas, imagen)
                     VALUES (%s, %s, %s, %s, 0, %s)
                 ''' if DB_URL else '''
                     INSERT INTO productos (nombre, precio, costo, stock, ventas, imagen)
                     VALUES (?, ?, ?, ?, 0, ?)
                 '''
-                cursor.execute(q, p)
+                cursor.execute(q_ins, p)
+            else:
+                pid = f['id'] if isinstance(f, dict) else f[0]
+                q_upd = 'UPDATE productos SET imagen = %s WHERE id = %s' if DB_URL else 'UPDATE productos SET imagen = ? WHERE id = ?'
+                cursor.execute(q_upd, (img, pid))
             conn.commit()
 
+        # Vincular todas las imágenes
         for nombre_prod, img_file in MAPA_IMAGENES.items():
             try:
                 q_auto = 'UPDATE productos SET imagen = %s WHERE LOWER(TRIM(nombre)) = LOWER(TRIM(%s))' if DB_URL else 'UPDATE productos SET imagen = ? WHERE LOWER(TRIM(nombre)) = LOWER(TRIM(?))'
@@ -509,12 +471,30 @@ def vender_producto(id):
     
     if prod and prod['stock'] > 0:
         precio_prod = float(prod['precio'])
+        nombre_prod = str(prod['nombre'])
         now_sv = get_now_sv()
         hoy_str = now_sv.strftime('%Y-%m-%d')
 
+        # 1. Descuento del producto principal
         q_upd = 'UPDATE productos SET stock = stock - 1, ventas = ventas + 1 WHERE id = %s' if DB_URL else 'UPDATE productos SET stock = stock - 1, ventas = ventas + 1 WHERE id = ?'
         cursor.execute(q_upd, (id,))
-        
+
+        # 2. Descuento cruzado de Six Pack <-> Unidades de Cerveza
+        for six_nombre, uni_nombre in PAREJAS_CERVEZA:
+            if LOWER(nombre_prod) == LOWER(six_nombre):
+                # Si vendió un Six Pack, restamos 6 unidades al suelto
+                q_sub = 'UPDATE productos SET stock = GREATEST(0, stock - 6) WHERE LOWER(TRIM(nombre)) = LOWER(TRIM(%s))' if DB_URL else 'UPDATE productos SET stock = MAX(0, stock - 6) WHERE LOWER(TRIM(nombre)) = LOWER(TRIM(?))'
+                cursor.execute(q_sub, (uni_nombre,))
+            elif LOWER(nombre_prod) == LOWER(uni_nombre):
+                # Si vendió unidad, recalculamos o restamos six pack si aplica
+                q_check_u = 'SELECT stock FROM productos WHERE id = %s' if DB_URL else 'SELECT stock FROM productos WHERE id = ?'
+                cursor.execute(q_check_u, (id,))
+                res_u = cursor.fetchone()
+                s_u = res_u['stock'] if isinstance(res_u, dict) else res_u[0]
+                nuevo_six_stock = s_u // 6
+                q_upd_s = 'UPDATE productos SET stock = %s WHERE LOWER(TRIM(nombre)) = LOWER(TRIM(%s))' if DB_URL else 'UPDATE productos SET stock = ? WHERE LOWER(TRIM(nombre)) = LOWER(TRIM(?))'
+                cursor.execute(q_upd_s, (nuevo_six_stock, six_nombre))
+
         q_hist = 'INSERT INTO historial_ventas (producto_id, monto, fecha_sv) VALUES (%s, %s, %s)' if DB_URL else 'INSERT INTO historial_ventas (producto_id, monto, fecha_sv) VALUES (?, ?, ?)'
         cursor.execute(q_hist, (id, precio_prod, hoy_str))
         
@@ -524,6 +504,9 @@ def vender_producto(id):
     
     conn.close()
     return jsonify({"success": False, "message": "Agotado"}), 400
+
+def LOWER(s):
+    return str(s).lower().strip()
 
 @app.route('/api/devolver/<int:id>', methods=['POST'])
 def devolver_producto(id):
@@ -535,12 +518,27 @@ def devolver_producto(id):
     
     if prod:
         precio_prod = float(prod['precio'])
+        nombre_prod = str(prod['nombre'])
         nuevas_ventas = max(0, int(prod['ventas']) - 1)
         now_sv = get_now_sv()
         hoy_str = now_sv.strftime('%Y-%m-%d')
 
         q_upd = 'UPDATE productos SET stock = stock + 1, ventas = %s WHERE id = %s' if DB_URL else 'UPDATE productos SET stock = stock + 1, ventas = ? WHERE id = ?'
         cursor.execute(q_upd, (nuevas_ventas, id))
+
+        # Restablecer en pareado de Six Pack <-> Unidades
+        for six_nombre, uni_nombre in PAREJAS_CERVEZA:
+            if LOWER(nombre_prod) == LOWER(six_nombre):
+                q_add = 'UPDATE productos SET stock = stock + 6 WHERE LOWER(TRIM(nombre)) = LOWER(TRIM(%s))' if DB_URL else 'UPDATE productos SET stock = stock + 6 WHERE LOWER(TRIM(nombre)) = LOWER(TRIM(?))'
+                cursor.execute(q_add, (uni_nombre,))
+            elif LOWER(nombre_prod) == LOWER(uni_nombre):
+                q_check_u = 'SELECT stock FROM productos WHERE id = %s' if DB_URL else 'SELECT stock FROM productos WHERE id = ?'
+                cursor.execute(q_check_u, (id,))
+                res_u = cursor.fetchone()
+                s_u = res_u['stock'] if isinstance(res_u, dict) else res_u[0]
+                nuevo_six_stock = s_u // 6
+                q_upd_s = 'UPDATE productos SET stock = %s WHERE LOWER(TRIM(nombre)) = LOWER(TRIM(%s))' if DB_URL else 'UPDATE productos SET stock = ? WHERE LOWER(TRIM(nombre)) = LOWER(TRIM(?))'
+                cursor.execute(q_upd_s, (nuevo_six_stock, six_nombre))
         
         q_hist = 'INSERT INTO historial_ventas (producto_id, monto, fecha_sv) VALUES (%s, %s, %s)' if DB_URL else 'INSERT INTO historial_ventas (producto_id, monto, fecha_sv) VALUES (?, ?, ?)'
         cursor.execute(q_hist, (id, -precio_prod, hoy_str))
@@ -631,7 +629,6 @@ def detalle_historial(tipo):
         precio = float(d.get('precio', 0) or 0)
         costo = float(d.get('costo', 0) or 0)
         
-        # Cálculo de ganancia
         if precio < 0:
             ganancia = precio + costo
         else:
