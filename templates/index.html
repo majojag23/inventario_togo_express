@@ -41,6 +41,7 @@
             </div>
         </div>
         <div>
+            <button class="btn btn-info text-white btn-sm fw-bold me-2 px-3 py-2" onclick="forzarVinculacion()">🖼️ Re-vincular Imágenes</button>
             <button class="btn btn-outline-light btn-sm fw-bold me-2 px-3 py-2" onclick="abrirModalCompra()">🧾 + Registrar Factura Compra</button>
             <button class="btn btn-brand-red btn-sm px-3 py-2" onclick="abrirModalProducto()">+ Nuevo Producto</button>
         </div>
@@ -248,7 +249,6 @@
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <!-- Banner de resumen para ventas de hoy -->
                     <div id="resumen-dia-banner" class="alert alert-info d-none d-flex flex-wrap justify-content-around align-items-center fw-bold fs-6 mb-3 rounded-3 shadow-sm border-0" style="background-color: #e0f2fe; color: #0369a1;">
                         <div>🛒 Total Ventas Hoy: <span id="total-ventas-modal" class="text-primary fw-extrabold">$0.00</span></div>
                         <div>📈 Ganancia Limpia Hoy: <span id="total-ganancia-modal" class="text-success fw-extrabold">$0.00</span></div>
@@ -281,6 +281,17 @@
             } catch(e) {}
             filtrarProductos();
             renderMetricas();
+        }
+
+        async function forzarVinculacion() {
+            const res = await fetch('/api/forzar-vinculacion', { method: 'POST' });
+            if (res.ok) {
+                const data = await res.json();
+                alert(`¡Éxito! Se re-vincularon ${data.actualizados} imágenes de productos.`);
+                cargarProductos();
+            } else {
+                alert("Ocurrió un error al re-vincular las imágenes.");
+            }
         }
 
         function filtrarProductos() {
