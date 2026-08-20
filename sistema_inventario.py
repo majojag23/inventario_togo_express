@@ -1,7 +1,9 @@
 import os
 import sqlite3
+import uuid
+import mimetypes
 from datetime import datetime, timezone, timedelta
-from flask import Flask, render_template, request, jsonify, send_from_directory
+from flask import Flask, render_template, request, jsonify, send_from_directory, Response
 from werkzeug.utils import secure_filename
 import psycopg2
 from psycopg2.extras import RealDictCursor
@@ -77,6 +79,17 @@ def init_db():
                 imagen TEXT
             )
         ''')
+
+        if DB_URL:
+            cursor.execute("ALTER TABLE productos ADD COLUMN IF NOT EXISTS imagen_data BYTEA")
+            cursor.execute("ALTER TABLE productos ADD COLUMN IF NOT EXISTS imagen_mime VARCHAR(100)")
+        else:
+            cursor.execute("PRAGMA table_info(productos)")
+            columnas_existentes = [fila[1] for fila in cursor.fetchall()]
+            if 'imagen_data' not in columnas_existentes:
+                cursor.execute("ALTER TABLE productos ADD COLUMN imagen_data BLOB")
+            if 'imagen_mime' not in columnas_existentes:
+                cursor.execute("ALTER TABLE productos ADD COLUMN imagen_mime TEXT")
 
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS historial_ventas (
@@ -167,7 +180,7 @@ def forzar_vinculacion():
 def get_productos():
     conn = get_db()
     cursor = conn.cursor()
-    cursor.execute('SELECT * FROM productos ORDER BY nombre ASC')
+    cursor.execute('SELECT id, nombre, precio, costo, stock, ventas, imagen FROM productos ORDER BY nombre ASC')
     prods = cursor.fetchall()
     conn.close()
     
@@ -194,10 +207,13 @@ def guardar_producto():
 
         imagen_file = request.files.get('imagen')
         filename = None
+        imagen_bytes = None
+        imagen_mime = None
 
         if imagen_file and allowed_file(imagen_file.filename):
-            filename = secure_filename(imagen_file.filename)
-            imagen_file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+            filename = f"{uuid.uuid4().hex}_{secure_filename(imagen_file.filename)}"
+            imagen_bytes = imagen_file.read()
+            imagen_mime = imagen_file.mimetype or mimetypes.guess_type(filename)[0] or 'image/jpeg'
 
         conn = get_db()
         cursor = conn.cursor()
@@ -205,11 +221,19 @@ def guardar_producto():
         if id_prod and id_prod.strip() != "":
             id_int = int(id_prod)
             foto_final = filename if filename else (imagen_actual if imagen_actual else 'default.jpg')
-            q = 'UPDATE productos SET nombre=%s, precio=%s, costo=%s, stock=%s, imagen=%s WHERE id=%s' if DB_URL else 'UPDATE productos SET nombre=?, precio=?, costo=?, stock=?, imagen=? WHERE id=?'
-            cursor.execute(q, (nombre, precio, costo, stock, foto_final, id_int))
+            if filename:
+                q = 'UPDATE productos SET nombre=%s, precio=%s, costo=%s, stock=%s, imagen=%s, imagen_data=%s, imagen_mime=%s WHERE id=%s' if DB_URL else 'UPDATE productos SET nombre=?, precio=?, costo=?, stock=?, imagen=?, imagen_data=?, imagen_mime=? WHERE id=?'
+                cursor.execute(q, (nombre, precio, costo, stock, foto_final, imagen_bytes, imagen_mime, id_int))
+            else:
+                q = 'UPDATE productos SET nombre=%s, precio=%s, costo=%s, stock=%s, imagen=%s WHERE id=%s' if DB_URL else 'UPDATE productos SET nombre=?, precio=?, costo=?, stock=?, imagen=? WHERE id=?'
+                cursor.execute(q, (nombre, precio, costo, stock, foto_final, id_int))
         else:
-            q = 'INSERT INTO productos (nombre, precio, costo, stock, imagen) VALUES (%s, %s, %s, %s, %s)' if DB_URL else 'INSERT INTO productos (nombre, precio, costo, stock, imagen) VALUES (?, ?, ?, ?, ?)'
-            cursor.execute(q, (nombre, precio, costo, stock, filename or 'default.jpg'))
+            if filename:
+                q = 'INSERT INTO productos (nombre, precio, costo, stock, imagen, imagen_data, imagen_mime) VALUES (%s, %s, %s, %s, %s, %s, %s)' if DB_URL else 'INSERT INTO productos (nombre, precio, costo, stock, imagen, imagen_data, imagen_mime) VALUES (?, ?, ?, ?, ?, ?, ?)'
+                cursor.execute(q, (nombre, precio, costo, stock, filename, imagen_bytes, imagen_mime))
+            else:
+                q = 'INSERT INTO productos (nombre, precio, costo, stock, imagen) VALUES (%s, %s, %s, %s, %s)' if DB_URL else 'INSERT INTO productos (nombre, precio, costo, stock, imagen) VALUES (?, ?, ?, ?, ?)'
+                cursor.execute(q, (nombre, precio, costo, stock, filename or 'default.jpg'))
 
         conn.commit()
         conn.close()
@@ -511,6 +535,19 @@ def detalle_historial(tipo):
 
 @app.route('/uploads/<path:filename>')
 def uploaded_file(filename):
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        q = 'SELECT imagen_data, imagen_mime FROM productos WHERE imagen = %s AND imagen_data IS NOT NULL' if DB_URL else 'SELECT imagen_data, imagen_mime FROM productos WHERE imagen = ? AND imagen_data IS NOT NULL'
+        cursor.execute(q, (filename,))
+        fila = cursor.fetchone()
+        conn.close()
+        if fila:
+            d = dict(fila)
+            return Response(bytes(d['imagen_data']), mimetype=d['imagen_mime'] or 'image/jpeg')
+    except Exception as e:
+        print("Error sirviendo imagen desde la base de datos:", e)
+
     if os.path.exists(os.path.join(app.config['UPLOAD_FOLDER'], filename)):
         return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
     if os.path.exists(filename):
